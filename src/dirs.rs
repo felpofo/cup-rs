@@ -1,7 +1,7 @@
-use std::{env, fs, io};
+use directories::BaseDirs;
 use std::io::{Error, ErrorKind};
 use std::path::PathBuf;
-use directories::BaseDirs;
+use std::{env, fs, io};
 use uuid::Uuid;
 
 pub fn create_dir(dir: &PathBuf) -> io::Result<PathBuf> {
@@ -37,6 +37,6 @@ pub fn get_data_dir() -> io::Result<PathBuf> {
         None => Err(Error::new(
             ErrorKind::Other,
             format!("System data directory does not exist"),
-        ))
+        )),
     }
 }

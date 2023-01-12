@@ -4,6 +4,8 @@ use regex::Regex;
 use std::fs;
 use std::io::{self, Error, ErrorKind};
 
+/// Clone a repository from github from short syntax, i mean`<username>/<repo>
+/// By now its hardcoded for github site only
 pub fn clone(str: &str) -> io::Result<Repository> {
     let str_regex = Regex::new(r"^(\w+)/(\w+)$").unwrap();
 
@@ -36,26 +38,25 @@ pub fn clone(str: &str) -> io::Result<Repository> {
     }
 }
 
+/// Delete a repository from filesystem
 pub fn remove(repo: &Repository) -> io::Result<()> {
     fs::remove_dir_all(repo.workdir().unwrap())
 }
 
+/// Check if the repository has the `rust-dotfiles.json` file
 pub fn check(repo: &Repository) -> io::Result<bool> {
     match fs::read(repo.workdir().unwrap().join("rust-dotfiles.json")) {
         Ok(buffer) => {
             let content = String::from_utf8(buffer).unwrap();
             // For now, this only checks if file exists
             // TODO: check if file content is valid
+            // TODO: check if all files mentioned by this file exists
             Ok(true)
         }
-        Err(err) => {
-            match err.kind() {
-                ErrorKind::NotFound => {
-                    Ok(false)
-                }
-                _ => Err(err)
-            }
-        }
+        Err(err) => match err.kind() {
+            ErrorKind::NotFound => Ok(false),
+            _ => Err(err),
+        },
     }
 }
 
@@ -84,12 +85,12 @@ mod tests {
         let is_valid = repo::check(&repo).expect("Error checking repo");
         assert!(is_valid, "should be valid");
 
-        fs::remove_file(repo.workdir().unwrap().join("rust-dotfiles.json")).expect("Error removing program's file");
+        fs::remove_file(repo.workdir().unwrap().join("rust-dotfiles.json"))
+            .expect("Error removing program's file");
 
         let is_valid = repo::check(&repo).expect("Error checking repo");
         assert!(!is_valid, "should be invalid");
 
         repo::remove(&repo).expect("Failed to remove repo");
     }
-    
 }
