@@ -4,7 +4,7 @@ use regex::Regex;
 use std::fs;
 use std::io::{self, Error, ErrorKind};
 
-pub fn clone_repo(str: &str) -> io::Result<Repository> {
+pub fn clone(str: &str) -> io::Result<Repository> {
     let str_regex = Regex::new(r"^(\w+)/(\w+)$").unwrap();
 
     if !str_regex.is_match(str) {
@@ -17,10 +17,13 @@ pub fn clone_repo(str: &str) -> io::Result<Repository> {
     let captures = str_regex.captures(str).unwrap();
     let user = captures.get(1).unwrap().as_str();
     let repo = captures.get(2).unwrap().as_str();
-    let url = format!("https://github.com/{user}/{repo}");
 
+    let url = format!("https://github.com/{user}/{repo}");
     let dest = get_data_dir();
-    if dest.is_err() { return Err(dest.unwrap_err()); }
+
+    if dest.is_err() {
+        return Err(dest.unwrap_err());
+    }
     let dest = dest.unwrap();
 
     if dest.exists() {
@@ -33,25 +36,25 @@ pub fn clone_repo(str: &str) -> io::Result<Repository> {
     }
 }
 
+pub fn remove(repo: &Repository) -> io::Result<()> {
+    fs::remove_dir_all(repo.workdir().unwrap())
+}
+
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::repo;
 
     #[test]
-    fn test_clone_repo() {
-        let repo = clone_repo("felpofo/testrepo").expect("Error cloning repo 'felpofo/testrepo'");
+    fn clone_and_delete_repo() {
+        let repo = repo::clone("felpofo/testrepo").expect("Error cloning repo 'felpofo/testrepo'");
 
-        println!("{}", repo
-            .path()
-            .to_str()
-            .unwrap());
+        assert!(repo.path().exists(), "Repo directory does not exist");
 
-        assert!(repo
-            .path()
-            .to_str()
-            .unwrap()
-            .ends_with("rust-dotfiles/testrepo/.git/"));
+        repo::remove(&repo).expect(&format!(
+            "Error deleting dir {}",
+            repo.path().to_str().unwrap()
+        ));
 
-        fs::remove_dir_all(repo.path()).expect(&format!("Error deleting dir {}", repo.path().to_str().unwrap()));
+        assert!(!repo.path().exists(), "Repo directory exists");
     }
 }
