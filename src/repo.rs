@@ -43,9 +43,9 @@ pub fn remove(repo: &Repository) -> io::Result<()> {
     fs::remove_dir_all(repo.workdir().unwrap())
 }
 
-/// Check if the repository has the `rust-dotfiles.json` file
+/// Check if the repository has the `yada.json` file
 pub fn check(repo: &Repository) -> io::Result<bool> {
-    match fs::read(repo.workdir().unwrap().join("rust-dotfiles.json")) {
+    match fs::read(repo.workdir().unwrap().join("yada.json")) {
         Ok(buffer) => {
             let content = String::from_utf8(buffer).unwrap();
             // For now, this only checks if file exists
@@ -85,7 +85,7 @@ mod tests {
         let is_valid = repo::check(&repo).expect("Error checking repo");
         assert!(is_valid, "should be valid");
 
-        fs::remove_file(repo.workdir().unwrap().join("rust-dotfiles.json"))
+        fs::remove_file(repo.workdir().unwrap().join("yada.json"))
             .expect("Error removing program's file");
 
         let is_valid = repo::check(&repo).expect("Error checking repo");

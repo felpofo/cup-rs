@@ -16,7 +16,7 @@ pub fn create_dir(dir: &PathBuf) -> io::Result<PathBuf> {
 
 pub fn get_tmp_dir() -> io::Result<PathBuf> {
     let uuid = Uuid::new_v4().to_string().replace("-", "");
-    let dir = env::temp_dir().join(format!("rust-dotfiles_{}", uuid));
+    let dir = env::temp_dir().join(format!("yada_{}", uuid));
 
     create_dir(&dir)
 }
@@ -24,7 +24,7 @@ pub fn get_tmp_dir() -> io::Result<PathBuf> {
 pub fn get_data_dir() -> io::Result<PathBuf> {
     match BaseDirs::new() {
         Some(dirs) => {
-            let dir = dirs.data_dir().join("rust-dotfiles");
+            let dir = dirs.data_dir().join("yada");
 
             if !dir.exists() {
                 if let Err(err) = create_dir(&dir) {
