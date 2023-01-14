@@ -1,13 +1,13 @@
-use crate::dirs::get_data_dir;
+use crate::dirs::Directories;
 use git2::Repository;
 use regex::Regex;
 use std::fs;
-use std::io::{self, Error, ErrorKind};
+use std::io::{Error, ErrorKind, Result};
 
 /// Clone a repository from github from short syntax, i mean`<username>/<repo>
 /// By now its hardcoded for github site only
-pub fn clone(str: &str) -> io::Result<Repository> {
-    let str_regex = Regex::new(r"^(\w+)/(\w+)$").unwrap();
+pub fn clone(str: &str) -> Result<Repository> {
+    let str_regex = Regex::new(r"^(.+)/(.+)$").unwrap();
 
     if !str_regex.is_match(str) {
         return Err(Error::new(
@@ -21,30 +21,25 @@ pub fn clone(str: &str) -> io::Result<Repository> {
     let repo = captures.get(2).unwrap().as_str();
 
     let url = format!("https://github.com/{user}/{repo}");
-    let dest = get_data_dir();
-
-    if dest.is_err() {
-        return Err(dest.unwrap_err());
-    }
-    let dest = dest.unwrap();
+    let dest = Directories::Data.path().join(repo);
 
     if dest.exists() {
-        fs::remove_dir_all(&dest).expect(&format!("Error deleting dir {}", dest.to_str().unwrap()));
+        fs::remove_dir_all(&dest).expect(&format!("Error deleting dir {:?}", dest));
     }
 
     match Repository::clone(&url, dest.join(repo)) {
-        Ok(r) => Ok(r),
+        Ok(clone) => Ok(clone),
         Err(err) => Err(Error::new(ErrorKind::Other, err.message())),
     }
 }
 
 /// Delete a repository from filesystem
-pub fn remove(repo: &Repository) -> io::Result<()> {
+pub fn remove(repo: &Repository) -> Result<()> {
     fs::remove_dir_all(repo.workdir().unwrap())
 }
 
 /// Check if the repository has the `yada.json` file
-pub fn check(repo: &Repository) -> io::Result<bool> {
+pub fn check(repo: &Repository) -> Result<bool> {
     match fs::read(repo.workdir().unwrap().join("yada.json")) {
         Ok(buffer) => {
             let content = String::from_utf8(buffer).unwrap();
