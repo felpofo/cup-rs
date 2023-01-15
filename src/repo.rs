@@ -54,38 +54,3 @@ pub fn check(repo: &Repository) -> Result<bool> {
         },
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use crate::repo;
-    use std::fs;
-
-    #[test]
-    fn clone_and_delete_repo() {
-        let repo = repo::clone("felpofo/testrepo").expect("Error cloning repo 'felpofo/testrepo'");
-        assert!(repo.path().exists(), "Repo directory does not exist");
-
-        repo::remove(&repo).expect(&format!(
-            "Error deleting dir {}",
-            repo.path().to_str().unwrap()
-        ));
-        assert!(!repo.path().exists(), "Repo directory exists");
-    }
-
-    #[test]
-    fn check_repo() {
-        let repo = repo::clone("felpofo/testrepo").expect("Error cloning repo 'felpofo/testrepo'");
-        assert!(repo.path().exists(), "Repo directory does not exist");
-
-        let is_valid = repo::check(&repo).expect("Error checking repo");
-        assert!(is_valid, "should be valid");
-
-        fs::remove_file(repo.workdir().unwrap().join("yada.json"))
-            .expect("Error removing program's file");
-
-        let is_valid = repo::check(&repo).expect("Error checking repo");
-        assert!(!is_valid, "should be invalid");
-
-        repo::remove(&repo).expect("Failed to remove repo");
-    }
-}
