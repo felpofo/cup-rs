@@ -1,7 +1,24 @@
 [package]
-name = "yada"
+name = "cup"
+description = "(WIP) A New Dotfile Manager (again)"
 version = "0.1.0"
+license = "MIT"
+authors = ["felpofo"]
 edition = "2021"
+homepage = "https://github.com/felpofo/cup-rs"
+repository = "https://github.com/felpofo/cup-rs"
+readme = "README.md"
+keywords = [
+  "cup",
+  "dotfile",
+  "manager",
+  "cli"
+]
+catagories = [
+  "command-line-utilities",
+  "config",
+  "filesystem",
+]
 
 [dependencies]
 clap = { version = "4.1.0", features = ["cargo"] }
