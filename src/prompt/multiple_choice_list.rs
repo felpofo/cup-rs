@@ -11,10 +11,6 @@ use termion::{
     style::{Bold, Reset as StyleReset, Underline},
 };
 
-pub struct MultipleChoiceList {
-    options: Vec<Option>,
-}
-
 struct Option {
     text: String,
     checked: bool,
@@ -52,6 +48,10 @@ impl fmt::Display for Option {
 
         write!(f, "{}{StyleReset}{}", text, Fg(ColorReset))
     }
+}
+
+pub struct MultipleChoiceList {
+    options: Vec<Option>,
 }
 
 impl MultipleChoiceList {
@@ -92,7 +92,7 @@ impl MultipleChoiceList {
         loop {
             if big_list {
                 let selected_index = self.selected().0;
-                
+
                 if selected_index < 2 {
                     for option in self.options.iter().take(5) {
                         write!(stdout, "{}\r\n", option).unwrap();

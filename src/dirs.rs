@@ -16,12 +16,16 @@ impl Directories {
     pub fn path(&self) -> PathBuf {
         let home = || {
             let os_str = env::var_os("HOME");
-            
+
             if let Some(home) = os_str {
                 return PathBuf::from(&home);
             }
-            
-            eprintln!("{}ERROR: `HOME` environment variable is not set{}", Fg(Red), Fg(Reset));
+
+            eprintln!(
+                "{}ERROR: `HOME` environment variable is not set{}",
+                Fg(Red),
+                Fg(Reset)
+            );
             process::exit(1);
         };
 
