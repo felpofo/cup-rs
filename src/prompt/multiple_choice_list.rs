@@ -1,14 +1,15 @@
+use super::Prompt;
 use std::{
     fmt,
     io::{stdin, stdout, Write},
 };
 use termion::{
-    color::{Black, Fg, LightBlack, LightGreen, Reset as ColorReset},
+    color::{self, Black, Fg, LightBlack, LightGreen},
     cursor::Up,
     event::Key,
     input::TermRead,
     raw::IntoRawMode,
-    style::{Bold, Reset as StyleReset, Underline},
+    style::{self, Bold, Underline},
 };
 
 struct Option {
@@ -27,7 +28,7 @@ impl fmt::Display for Option {
                     text = format!(
                         "  {}✓{} {Bold}{Underline}{}",
                         Fg(LightGreen),
-                        Fg(ColorReset),
+                        Fg(color::Reset),
                         self.text
                     )
                 }
@@ -35,7 +36,7 @@ impl fmt::Display for Option {
                     text = format!(
                         "  {}✓ {}{Bold}{}",
                         Fg(LightGreen),
-                        Fg(ColorReset),
+                        Fg(color::Reset),
                         self.text
                     )
                 }
@@ -46,7 +47,7 @@ impl fmt::Display for Option {
             },
         }
 
-        write!(f, "{}{StyleReset}{}", text, Fg(ColorReset))
+        write!(f, "{}{}{}", text, style::Reset, Fg(color::Reset))
     }
 }
 
@@ -55,8 +56,12 @@ pub struct MultipleChoiceList {
 }
 
 impl MultipleChoiceList {
-    pub fn new() -> MultipleChoiceList {
-        MultipleChoiceList { options: vec![] }
+    pub fn new(options: Vec<(&str, bool)>) -> Self {
+        let mut object = Self { options: vec![] };
+
+        options.into_iter().for_each(|(t, c)| object.add(t, c));
+
+        object
     }
 
     pub fn add(&mut self, text: &str, checked: bool) {
@@ -69,7 +74,19 @@ impl MultipleChoiceList {
         self.options.push(option);
     }
 
-    pub fn prompt(&mut self) -> Vec<String> {
+    fn selected(&mut self) -> (usize, &mut Option) {
+        self.options
+            .iter_mut()
+            .enumerate()
+            .find(|(_, o)| o.selected)
+            .unwrap()
+    }
+}
+
+impl Prompt for MultipleChoiceList {
+    type Output = Vec<String>;
+
+    fn prompt(&mut self) -> Self::Output {
         if self.options.is_empty() {
             return vec![];
         }
@@ -81,11 +98,10 @@ impl MultipleChoiceList {
 
         write!(
             stdout,
-            "{}Select what do you want to install{}{} - Space to select, Return to submit{}\r\n",
-            Bold,
-            StyleReset,
+            "{Bold}Select what do you want to install{}{} - Space to select, Return to submit{}\r\n",
+            style::Reset,
             Fg(Black),
-            Fg(ColorReset)
+            Fg(color::Reset)
         )
         .unwrap();
 
@@ -163,13 +179,5 @@ impl MultipleChoiceList {
             .filter(|object| object.checked)
             .map(|object| object.text.clone())
             .collect()
-    }
-
-    fn selected(&mut self) -> (usize, &mut Option) {
-        self.options
-            .iter_mut()
-            .enumerate()
-            .find(|(_, o)| o.selected)
-            .unwrap()
     }
 }

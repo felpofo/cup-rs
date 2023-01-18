@@ -1,7 +1,8 @@
-use std::{env, path::PathBuf, process};
-use termion::color::{Fg, Red, Reset};
+use crate::error_and_exit;
+use std::{env, fmt, path::PathBuf};
 
 pub enum Directories {
+    Home,
     Data,
     Config,
     Cache,
@@ -12,33 +13,33 @@ impl Directories {
     ///
     /// # Panics
     ///
-    /// This function will panic if neither `XDG_xxx_HOME` or `HOME` environment variable are set
+    /// This function will panic if `HOME` environment variable is not set
     pub fn path(&self) -> PathBuf {
-        let home = || {
-            let os_str = env::var_os("HOME");
+        let os_str = env::var_os("HOME");
 
-            if let Some(home) = os_str {
-                return PathBuf::from(&home);
-            }
+        if os_str.is_none() {
+            error_and_exit("`HOME` environment variable is not set");
+        }
 
-            eprintln!(
-                "{}ERROR: `HOME` environment variable is not set{}",
-                Fg(Red),
-                Fg(Reset)
-            );
-            process::exit(1);
-        };
+        let home = PathBuf::from(os_str.unwrap());
 
         match &self {
+            Directories::Home => home,
             Directories::Data => env::var_os("XDG_DATA_HOME")
                 .and_then(|s| Some(PathBuf::from(s)))
-                .unwrap_or_else(|| home().join(".local/share/yada")),
+                .unwrap_or_else(|| home.join(".local/share/yada")),
             Directories::Config => env::var_os("XDG_CONFIG_HOME")
                 .and_then(|s| Some(PathBuf::from(s)))
-                .unwrap_or_else(|| home().join(".config/yada")),
+                .unwrap_or_else(|| home.join(".config/yada")),
             Directories::Cache => env::var_os("XDG_CACHE_HOME")
                 .and_then(|s| Some(PathBuf::from(s)))
-                .unwrap_or_else(|| home().join(".cache/yada")),
+                .unwrap_or_else(|| home.join(".cache/yada")),
         }
+    }
+}
+
+impl fmt::Display for Directories {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.path().display())
     }
 }
