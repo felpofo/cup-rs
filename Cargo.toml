@@ -1,7 +1,7 @@
 [package]
 name = "cup"
 description = "(WIP) A New Dotfile Manager (again)"
-version = "0.1.0"
+version = "0.2.0"
 license = "MIT"
 authors = ["felpofo"]
 edition = "2021"
@@ -22,6 +22,8 @@ catagories = [
 
 [dependencies]
 clap = { version = "4.1.0", features = ["cargo"] }
+serde = { version = "1.0.152", features = ["derive"] }
+serde_yaml = "0.9.16"
+termion = "2.0.1"
 git2 = "0.16.0"
 regex = "1.7.1"
-termion = "2.0.1"

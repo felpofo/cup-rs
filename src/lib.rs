@@ -1,19 +1,17 @@
-use std::process::exit;
-use termion::{
-    color::{self, Fg, Red},
-    style::{self, Bold},
-};
+mod prompt;
 
 mod dirs;
-mod export;
 mod repo;
-pub mod prompt;
 
-pub use dirs::Directories;
-pub use export::Export;
-pub use repo::Repo;
+use dirs::Directories;
+pub use repo::CupRepository;
 
 fn error_and_exit(error_message: &str) -> ! {
+    use termion::{
+        color::{self, Fg, Red},
+        style::{self, Bold},
+    };
+
     eprintln!(
         "{Bold}{}{}{}{}",
         Fg(Red),
@@ -21,5 +19,6 @@ fn error_and_exit(error_message: &str) -> ! {
         style::Reset,
         Fg(color::Reset)
     );
-    exit(1);
+
+    std::process::exit(1);
 }

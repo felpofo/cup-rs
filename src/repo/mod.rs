@@ -1,25 +1,32 @@
+mod config;
+
+use config::CupConfig;
+
 use crate::{
     error_and_exit,
     prompt::{Prompt, Question},
     Directories,
 };
-use git2::{build::RepoBuilder, Cred, FetchOptions, RemoteCallbacks, Repository};
-use regex::Regex;
+
 use std::{
     fs,
     io::Result,
     path::{Path, PathBuf},
 };
 
-pub struct Repo {
+use clap::crate_name;
+use git2::{build::RepoBuilder, Cred, FetchOptions, RemoteCallbacks, Repository};
+use regex::Regex;
+
+pub struct CupRepository {
     repository: Repository,
     path: PathBuf,
 }
 
-impl Repo {
-    /// Clone a repository
+impl CupRepository {
+    /// Download a repository
     ///
-    /// Overwrite if already exists
+    /// Overwrite if already exists on filesystem (Default path: `~/.local/share/cup`)
     ///
     /// # Panics
     ///
@@ -30,7 +37,7 @@ impl Repo {
     /// `git@<ssh>:<username>/<repository>`
     ///
     /// `<protocol>://<website>/<username>/<repository>`
-    pub fn clone(query: &str) -> Repo {
+    pub fn clone(url: &str) -> Self {
         // Adapted from `https://regexpattern.com/git-repository`
         // Fields: ([protocol   secure?   website]   OR   [git])   username   repository
         let regex = Regex::new(&format!(
@@ -43,11 +50,11 @@ impl Repo {
         ))
         .unwrap();
 
-        if !regex.is_match(query) {
+        if !regex.is_match(url) {
             error_and_exit("Invalid Repository");
         }
 
-        let captures = regex.captures(query).unwrap();
+        let captures = regex.captures(url).unwrap();
 
         let user = captures.name("username").unwrap().as_str();
         let repo = captures.name("repository").unwrap().as_str();
@@ -56,12 +63,12 @@ impl Repo {
 
         if dest.exists() {
             if let Err(err) = fs::remove_dir_all(&dest) {
-                eprintln!("{:?}", err.kind());
+                eprintln!("{}", err.to_string());
                 error_and_exit(&format!("Error deleting dir: {:?}", &dest));
             }
         }
 
-        if let Some(_) = captures.name("ssh") {
+        let repository = if let Some(_) = captures.name("ssh") {
             let mut callbacks = RemoteCallbacks::new();
 
             callbacks.credentials(|_, username_from_url, _| {
@@ -116,33 +123,38 @@ impl Repo {
             let mut builder = RepoBuilder::new();
             builder.fetch_options(fetch_options);
 
-            return match builder.clone(&query, &dest) {
-                Ok(repository) => Repo {
+            match builder.clone(&url, &dest) {
+                Ok(repository) => Self {
                     repository,
                     path: dest,
                 },
                 Err(err) => error_and_exit(err.message()),
-            };
-        }
+            }
+        } else {
+            let url = captures
+                .name("website")
+                .is_some()
+                .then_some(url.to_string())
+                .unwrap_or(format!("https://github.com/{user}/{repo}"));
 
-        if let Some(_) = captures.name("website") {
-            return match Repository::clone(&query, &dest) {
-                Ok(repository) => Repo {
+            match Repository::clone(&url, &dest) {
+                Ok(repository) => Self {
                     repository,
                     path: dest,
                 },
                 Err(err) => error_and_exit(err.message()),
-            };
-        }
-
-        let url = format!("https://github.com/{user}/{repo}");
-        return match Repository::clone(&url, &dest) {
-            Ok(repository) => Repo {
-                repository,
-                path: dest,
-            },
-            Err(err) => error_and_exit(err.message()),
+            }
         };
+
+        if !repository.check() {
+            eprintln!("Error: repository does not contain dotfiles from this program");
+            if let Err(err) = repository.delete() {
+                eprintln!("{}", err.to_string());
+                error_and_exit(&format!("Error deleting dir: {:?}", &repository.path));
+            }
+        }
+
+        repository
     }
 
     /// Delete a repository from filesystem
@@ -150,11 +162,47 @@ impl Repo {
         fs::remove_dir_all(&self.path)
     }
 
-    /// Check if a repository has the `yada.json` file
-    fn check(url: &str) -> bool {
-        unimplemented!();
-        // TODO: check if file content is valid
-        // TODO: check if all files mentioned by this file exists
-        // TODO: make all of this before download the repo
+    /// Check if a repository has an ok `.yml` file
+    pub fn check(&self) -> bool {
+        let config_path = self.path.join(format!("{}.yml", crate_name!()));
+
+        if !config_path.exists() {
+            return false;
+        }
+
+        let config = match fs::read_to_string(&config_path) {
+            Ok(content) => {
+                let config = serde_yaml::from_str::<CupConfig>(&content);
+
+                if let Err(err) = config {
+                    error_and_exit(&format!(
+                        "Error parsing file `{:?}`: {}",
+                        &config_path,
+                        err.to_string()
+                    ))
+                };
+
+                config.unwrap()
+            }
+            Err(err) => error_and_exit(&format!(
+                "Error reading file `{:?}`: {}",
+                &config_path,
+                err.to_string()
+            )),
+        };
+
+        for file in &config.files {
+            let from = self.files_dir().join(&file.from);
+
+            if !from.exists() {
+                error_and_exit(&format!("Error: file `{}` does not exist", from.display()))
+            }
+        }
+
+        true
+    }
+
+    fn files_dir(&self) -> PathBuf {
+        self.path.join("files")
     }
 }

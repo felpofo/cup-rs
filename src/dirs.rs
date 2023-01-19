@@ -1,5 +1,8 @@
 use crate::error_and_exit;
+
 use std::{env, fmt, path::PathBuf};
+
+use clap::crate_name;
 
 pub enum Directories {
     Home,
@@ -27,13 +30,13 @@ impl Directories {
             Directories::Home => home,
             Directories::Data => env::var_os("XDG_DATA_HOME")
                 .and_then(|s| Some(PathBuf::from(s)))
-                .unwrap_or_else(|| home.join(".local/share/yada")),
+                .unwrap_or_else(|| home.join(".local/share").join(crate_name!())),
             Directories::Config => env::var_os("XDG_CONFIG_HOME")
                 .and_then(|s| Some(PathBuf::from(s)))
-                .unwrap_or_else(|| home.join(".config/yada")),
+                .unwrap_or_else(|| home.join(".config").join(crate_name!())),
             Directories::Cache => env::var_os("XDG_CACHE_HOME")
                 .and_then(|s| Some(PathBuf::from(s)))
-                .unwrap_or_else(|| home.join(".cache/yada")),
+                .unwrap_or_else(|| home.join(".cache").join(crate_name!())),
         }
     }
 }

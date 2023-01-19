@@ -1,5 +1,7 @@
 use super::Prompt;
+
 use std::io::{stdin, stdout, BufRead, Write};
+
 use termion::{
     color::{self, Black, Fg},
     style::{self, Bold},
@@ -31,24 +33,18 @@ impl Prompt for Question {
     type Output = String;
 
     fn prompt(&mut self) -> Self::Output {
-        println!(
-            "{Bold}{}{}{} - Return to submit{}",
-            self.question,
-            style::Reset,
-            Fg(Black),
-            Fg(color::Reset)
-        );
+        println!("{Bold}{}{}", self.question, style::Reset);
 
-        if !self.default.is_empty() {
-            print!(
-                "{}(Default: {}):{} ",
-                Fg(Black),
-                &self.default,
-                Fg(color::Reset)
-            );
-        } else {
-            print!("Enter value: ");
-        }
+        // if !self.default.is_empty() {
+        //     print!(
+        //         "{}(Default: {}):{} ",
+        //         Fg(Black),
+        //         &self.default,
+        //         Fg(color::Reset)
+        //     );
+        // } else {
+        //     print!("Enter value: ");
+        // }
 
         stdout().flush().unwrap();
 

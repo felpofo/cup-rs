@@ -1,8 +1,10 @@
 use super::Prompt;
+
 use std::{
     fmt,
     io::{stdin, stdout, Write},
 };
+
 use termion::{
     color::{self, Black, Fg, LightBlack, LightGreen},
     cursor::Up,
