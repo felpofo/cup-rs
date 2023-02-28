@@ -1,29 +1,24 @@
-mod config;
+pub mod config;
 
-use config::CupConfig;
-
+use self::config::File;
 use crate::{
     error_and_exit,
     prompt::{Prompt, Question},
+    repo::config::Config,
     Directories,
 };
-
-use std::{
-    fs,
-    io::Result,
-    path::{Path, PathBuf},
-};
-
-use clap::crate_name;
-use git2::{build::RepoBuilder, Cred, FetchOptions, RemoteCallbacks, Repository};
+use git2::{self, build::RepoBuilder, Cred, FetchOptions, RemoteCallbacks};
 use regex::Regex;
+use std::{error::Error, fs, io, path::PathBuf};
+use uuid::Uuid;
 
-pub struct CupRepository {
-    repository: Repository,
-    path: PathBuf,
+pub struct Repository {
+    repository: git2::Repository,
+    pub config: Config,
+    pub path: PathBuf,
 }
 
-impl CupRepository {
+impl Repository {
     /// Download a repository
     ///
     /// Overwrite if already exists on filesystem (Default path: `~/.local/share/cup`)
@@ -98,8 +93,9 @@ impl CupRepository {
                 };
 
                 let mut answer = Question::new(
-                    "Oh. It looks like you are trying to clone a repository from ssh, in this case type where is your ssh key"
-                ).default(&key).prompt();
+                    "Oh. It looks like you are trying to clone a repository from ssh, in this case type where is your ssh key",
+                    &key
+                ).prompt();
 
                 if answer != key {
                     if answer.starts_with('~') {
@@ -112,7 +108,7 @@ impl CupRepository {
                 Cred::ssh_key(
                     username_from_url.unwrap(),
                     None,
-                    Path::new(&format!("{}/{answer}", Directories::Home)),
+                    &Directories::Home.path().join(answer),
                     None,
                 )
             });
@@ -124,10 +120,26 @@ impl CupRepository {
             builder.fetch_options(fetch_options);
 
             match builder.clone(&url, &dest) {
-                Ok(repository) => Self {
-                    repository,
-                    path: dest,
-                },
+                Ok(repository) => {
+                    if !dest.exists() {
+                        error_and_exit("Error: This is not a valid repository");
+                    }
+
+                    let config = Config {
+                        id: Uuid::new_v4().to_string(),
+                        name: repo.into(),
+                        files: serde_yaml::from_str::<Vec<config::File>>(
+                            &fs::read_to_string(&dest).unwrap(),
+                        )
+                        .unwrap(),
+                    };
+
+                    Self {
+                        repository,
+                        path: dest,
+                        config,
+                    }
+                }
                 Err(err) => error_and_exit(err.message()),
             }
         } else {
@@ -137,11 +149,27 @@ impl CupRepository {
                 .then_some(url.to_string())
                 .unwrap_or(format!("https://github.com/{user}/{repo}"));
 
-            match Repository::clone(&url, &dest) {
-                Ok(repository) => Self {
-                    repository,
-                    path: dest,
-                },
+            match git2::Repository::clone(&url, &dest) {
+                Ok(repository) => {
+                    if !dest.exists() {
+                        error_and_exit("Error: This is not a valid repository");
+                    }
+
+                    let config = Config {
+                        id: Uuid::new_v4().to_string(),
+                        name: repo.into(),
+                        files: serde_yaml::from_str::<Vec<config::File>>(
+                            &fs::read_to_string(&dest).unwrap(),
+                        )
+                        .unwrap(),
+                    };
+
+                    Self {
+                        repository,
+                        path: dest,
+                        config,
+                    }
+                }
                 Err(err) => error_and_exit(err.message()),
             }
         };
@@ -158,51 +186,144 @@ impl CupRepository {
     }
 
     /// Delete a repository from filesystem
-    pub fn delete(&self) -> Result<()> {
+    pub fn delete(&self) -> io::Result<()> {
         fs::remove_dir_all(&self.path)
     }
 
     /// Check if a repository has an ok `.yml` file
-    pub fn check(&self) -> bool {
-        let config_path = self.path.join(format!("{}.yml", crate_name!()));
+    fn check(&self) -> bool {
+        let config = crate::Config::open(&self.config.name);
 
-        if !config_path.exists() {
+        if let Err(_) = config {
             return false;
         }
 
-        let config = match fs::read_to_string(&config_path) {
-            Ok(content) => {
-                let config = serde_yaml::from_str::<CupConfig>(&content);
-
-                if let Err(err) = config {
-                    error_and_exit(&format!(
-                        "Error parsing file `{:?}`: {}",
-                        &config_path,
-                        err.to_string()
-                    ))
-                };
-
-                config.unwrap()
-            }
-            Err(err) => error_and_exit(&format!(
-                "Error reading file `{:?}`: {}",
-                &config_path,
-                err.to_string()
-            )),
-        };
+        let config = config.unwrap();
 
         for file in &config.files {
-            let from = self.files_dir().join(&file.from);
+            let path = self.files_dir().join(&file.0);
 
-            if !from.exists() {
-                error_and_exit(&format!("Error: file `{}` does not exist", from.display()))
+            if !path.exists() {
+                return false;
             }
         }
 
         true
     }
 
+    /// Create an empty git repository on user data directory
+    pub fn init(name: &str) -> Self {
+        let path = Directories::Data.path().join(name);
+
+        let repository = git2::Repository::init(&path);
+        let config = crate::Config::new(name);
+
+        match repository {
+            Ok(repository) => Repository {
+                repository,
+                config,
+                path,
+            },
+            Err(err) => error_and_exit(&format!(
+                "Error creating repository '{}': {}",
+                name,
+                err.message()
+            )),
+        }
+    }
+
+    pub fn open(name: &str) -> Self {
+        let path = Directories::Data.path().join(name);
+
+        let config = Config::open(name).unwrap();
+
+        let repository = git2::Repository::open(&path)
+            .expect(&format!("Error opening repository on '{:?}'", path));
+
+        Self {
+            repository,
+            config,
+            path,
+        }
+    }
+
+    pub fn add_files(&mut self, files: &mut Vec<File>) -> Result<(), Box<dyn Error>> {
+        for file in files {
+            if self
+                .config
+                .files
+                .iter()
+                .position(|saved| file == saved)
+                .is_some()
+            {
+                continue;
+            }
+
+            match file.1.as_str() {
+                "/" => {
+                    let dest = self.files_dir().join(&file.0);
+                    let file = PathBuf::from("/").join(&file.0);
+
+                    println!("copying {:?} into {:?}", file, dest);
+
+                    fs::create_dir_all(&dest.parent().unwrap())?;
+                    fs::copy(file, &dest)?;
+                }
+                "~" => {
+                    let dest = self.files_dir().join("home").join(&file.0);
+                    let file = Directories::Home.path().join(&file.0);
+
+                    println!("copying {:?} into {:?}", file, dest);
+
+                    fs::create_dir_all(&dest.parent().unwrap())?;
+                    fs::copy(file, &dest)?;
+                }
+                _ => unreachable!(),
+            };
+
+            self.config.files.push(file.clone());
+        }
+
+        self.config.save()
+    }
+
+    pub fn remove_files(&mut self, files: &Vec<File>) -> Result<(), Box<dyn Error>> {
+        for file in files {
+            self.config
+                .files
+                .iter()
+                .position(|saved| file == saved)
+                .and_then(|index| {
+                    Some({
+                        self.config.files.remove(index);
+
+                        match file.1.as_str() {
+                            "/" => dbg!(fs::remove_file(self.files_dir().join(&file.0)).ok()?),
+                            //TODO remove empty dir that may exists after removing the file
+                            "~" => {
+                                dbg!(fs::remove_file(self.files_dir().join("home").join(&file.0))
+                                    .ok()?)
+                                //TODO remove empty dir that may exists after removing the file
+                            }
+                            _ => unreachable!(),
+                        };
+                    })
+                });
+        }
+
+        self.config.save()
+    }
+
     fn files_dir(&self) -> PathBuf {
         self.path.join("files")
+    }
+}
+
+impl std::fmt::Debug for Repository {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CupRepository")
+            .field("config", &self.config)
+            .field("path", &self.path)
+            .finish()
     }
 }

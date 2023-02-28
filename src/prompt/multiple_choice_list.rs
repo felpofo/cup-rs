@@ -1,10 +1,8 @@
 use super::Prompt;
-
 use std::{
     fmt,
     io::{stdin, stdout, Write},
 };
-
 use termion::{
     color::{self, Black, Fg, LightBlack, LightGreen},
     cursor::Up,
@@ -61,7 +59,9 @@ impl MultipleChoiceList {
     pub fn new(options: Vec<(&str, bool)>) -> Self {
         let mut object = Self { options: vec![] };
 
-        options.into_iter().for_each(|(t, c)| object.add(t, c));
+        options
+            .into_iter()
+            .for_each(|(text, checked)| object.add(text, checked));
 
         object
     }

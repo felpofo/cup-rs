@@ -1,11 +1,6 @@
 use super::Prompt;
-
 use std::io::{stdin, stdout, BufRead, Write};
-
-use termion::{
-    color::{self, Black, Fg},
-    style::{self, Bold},
-};
+use termion::style::{self, Bold};
 
 pub struct Question {
     question: String,
@@ -13,19 +8,11 @@ pub struct Question {
 }
 
 impl Question {
-    pub fn new(question: &str) -> Self {
+    pub fn new(question: &str, default: &str) -> Self {
         let question = question.into();
-
-        Self {
-            question,
-            default: "".into(),
-        }
-    }
-
-    pub fn default(self, default: &str) -> Self {
         let default = default.into();
 
-        Self { default, ..self }
+        Self { question, default }
     }
 }
 
@@ -33,18 +20,7 @@ impl Prompt for Question {
     type Output = String;
 
     fn prompt(&mut self) -> Self::Output {
-        println!("{Bold}{}{}", self.question, style::Reset);
-
-        // if !self.default.is_empty() {
-        //     print!(
-        //         "{}(Default: {}):{} ",
-        //         Fg(Black),
-        //         &self.default,
-        //         Fg(color::Reset)
-        //     );
-        // } else {
-        //     print!("Enter value: ");
-        // }
+        print!("{Bold}{}{}", self.question, style::Reset);
 
         stdout().flush().unwrap();
 

@@ -1,10 +1,12 @@
+pub mod commands;
 mod prompt;
 
 mod dirs;
 mod repo;
 
+pub use repo::config::Config;
 use dirs::Directories;
-pub use repo::CupRepository;
+pub use repo::Repository;
 
 fn error_and_exit(error_message: &str) -> ! {
     use termion::{

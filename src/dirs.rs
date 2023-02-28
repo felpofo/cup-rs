@@ -1,13 +1,10 @@
 use crate::error_and_exit;
-
-use std::{env, fmt, path::PathBuf};
-
 use clap::crate_name;
+use std::{env, fmt, path::PathBuf};
 
 pub enum Directories {
     Home,
     Data,
-    Config,
     Cache,
 }
 
@@ -31,9 +28,6 @@ impl Directories {
             Directories::Data => env::var_os("XDG_DATA_HOME")
                 .and_then(|s| Some(PathBuf::from(s)))
                 .unwrap_or_else(|| home.join(".local/share").join(crate_name!())),
-            Directories::Config => env::var_os("XDG_CONFIG_HOME")
-                .and_then(|s| Some(PathBuf::from(s)))
-                .unwrap_or_else(|| home.join(".config").join(crate_name!())),
             Directories::Cache => env::var_os("XDG_CACHE_HOME")
                 .and_then(|s| Some(PathBuf::from(s)))
                 .unwrap_or_else(|| home.join(".cache").join(crate_name!())),
