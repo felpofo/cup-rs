@@ -14,7 +14,7 @@ impl Export {
 
     pub fn add(
         name: &str,
-        matches: &ArgMatches,
+        _matches: &ArgMatches,
         submatches: &ArgMatches,
     ) -> Result<(), Box<dyn Error>> {
         let mut repository = Repository::open(name);
@@ -23,19 +23,17 @@ impl Export {
             .unwrap()
             .map(PathBuf::from)
             .filter_map(resolve_path)
-            .flat_map(read_dir)
+            .flat_map(read_files_all)
             .flatten()
             .map(File::from)
             .collect();
 
-        repository.add_files(&mut files)?;
-
-        Ok(())
+        repository.add_files(&mut files)
     }
 
     pub fn remove(
         name: &str,
-        matches: &ArgMatches,
+        _matches: &ArgMatches,
         submatches: &ArgMatches,
     ) -> Result<(), Box<dyn Error>> {
         let mut repository = Repository::open(name);
@@ -44,14 +42,12 @@ impl Export {
             .unwrap()
             .map(PathBuf::from)
             .filter_map(resolve_path)
-            .flat_map(read_dir)
+            .flat_map(read_files_all)
             .flatten()
             .map(File::from)
             .collect();
 
-        repository.remove_files(&files)?;
-
-        Ok(())
+        repository.remove_files(&files)
     }
 }
 
@@ -77,14 +73,14 @@ fn resolve_path(path: PathBuf) -> Option<PathBuf> {
     }
 }
 
-fn read_dir(dir: PathBuf) -> io::Result<Vec<PathBuf>> {
+fn read_files_all(dir: PathBuf) -> io::Result<Vec<PathBuf>> {
     let mut files = vec![];
 
     if dir.is_file() {
         files.push(dir);
     } else if dir.is_dir() {
         for entry in fs::read_dir(dir)? {
-            let mut inner = read_dir(entry?.path())?;
+            let mut inner = read_files_all(entry?.path())?;
             files.append(&mut inner);
         }
     }

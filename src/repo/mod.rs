@@ -1,15 +1,19 @@
 pub mod config;
+pub use config::Config;
 
 use self::config::File;
 use crate::{
     error_and_exit,
     prompt::{Prompt, Question},
-    repo::config::Config,
     Directories,
 };
 use git2::{self, build::RepoBuilder, Cred, FetchOptions, RemoteCallbacks};
 use regex::Regex;
-use std::{error::Error, fs, io, path::PathBuf};
+use std::{
+    error::Error,
+    fs, io,
+    path::{Path, PathBuf},
+};
 use uuid::Uuid;
 
 pub struct Repository {
@@ -295,23 +299,24 @@ impl Repository {
                 .position(|saved| file == saved)
                 .and_then(|index| {
                     Some({
-                        self.config.files.remove(index);
+                        let dir = self.files_dir();
 
                         match file.1.as_str() {
-                            "/" => dbg!(fs::remove_file(self.files_dir().join(&file.0)).ok()?),
-                            //TODO remove empty dir that may exists after removing the file
-                            "~" => {
-                                dbg!(fs::remove_file(self.files_dir().join("home").join(&file.0))
-                                    .ok()?)
-                                //TODO remove empty dir that may exists after removing the file
-                            }
+                            "/" => fs::remove_file(dir.join(&file.0)).ok()?,
+                            "~" => fs::remove_file(dir.join("home").join(&file.0)).ok()?,
                             _ => unreachable!(),
                         };
+
+                        self.config.files.remove(index);
                     })
                 });
         }
 
-        self.config.save()
+        self.config.save()?;
+
+        remove_empty_dir_all(&self.files_dir(), &self.files_dir())?;
+
+        Ok(())
     }
 
     fn files_dir(&self) -> PathBuf {
@@ -326,4 +331,25 @@ impl std::fmt::Debug for Repository {
             .field("path", &self.path)
             .finish()
     }
+}
+
+fn remove_empty_dir_all(dir: &Path, top: &Path) -> Result<(), Box<dyn Error>> {
+    let entries: Vec<_> = fs::read_dir(dir)?.collect();
+
+    for entry in &entries {
+        let path = entry.as_ref().unwrap().path();
+
+        if path.is_dir() {
+            remove_empty_dir_all(&path, top)?;
+        }
+    }
+
+    if dir != top {
+        if entries.is_empty() {
+            fs::remove_dir(dir)?;
+            remove_empty_dir_all(dir.parent().unwrap(), top)?;
+        }
+    }
+
+    Ok(())
 }

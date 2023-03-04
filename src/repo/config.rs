@@ -14,14 +14,14 @@ pub struct Config {
 #[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Serialize, Deserialize)]
 pub struct File(
     /// file path without root dirs and user home path
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// `/home/x/file` becomes `file`
     /// `/some/folder/on/root/file` becomes `some/folder/on/root/file`
     pub String,
     /// ~ or /
-    pub String
+    pub String,
 );
 
 impl Config {

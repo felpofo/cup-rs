@@ -4,9 +4,8 @@ mod prompt;
 mod dirs;
 mod repo;
 
-pub use repo::config::Config;
 use dirs::Directories;
-pub use repo::Repository;
+pub use repo::{Config, Repository};
 
 fn error_and_exit(error_message: &str) -> ! {
     use termion::{
