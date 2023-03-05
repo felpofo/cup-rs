@@ -2,6 +2,7 @@ use super::Prompt;
 use std::{
     fmt,
     io::{stdin, stdout, Write},
+    process,
 };
 use termion::{
     color::{self, Black, Fg, LightBlack, LightGreen},
@@ -12,6 +13,7 @@ use termion::{
     style::{self, Bold, Underline},
 };
 
+#[derive(Debug)]
 struct Option {
     text: String,
     checked: bool,
@@ -52,25 +54,29 @@ impl fmt::Display for Option {
 }
 
 pub struct MultipleChoiceList {
+    text: String,
     options: Vec<Option>,
 }
 
 impl MultipleChoiceList {
-    pub fn new(options: Vec<(&str, bool)>) -> Self {
-        let mut object = Self { options: vec![] };
+    pub fn new(text: &str, options: Vec<(String, bool)>) -> Self {
+        let mut object = Self {
+            text: text.into(),
+            options: vec![],
+        };
 
         options
-            .into_iter()
-            .for_each(|(text, checked)| object.add(text, checked));
+            .iter()
+            .for_each(|(text, checked)| object.add(text.into(), *checked));
 
         object
     }
 
-    pub fn add(&mut self, text: &str, checked: bool) {
+    pub fn add(&mut self, text: String, checked: bool) {
         let option = Option {
-            text: text.into(),
+            text,
             checked,
-            selected: if self.options.is_empty() { true } else { false },
+            selected: self.options.is_empty(),
         };
 
         self.options.push(option);
@@ -100,7 +106,8 @@ impl Prompt for MultipleChoiceList {
 
         write!(
             stdout,
-            "{Bold}Select what do you want to install{}{} - Space to select, Return to submit{}\r\n",
+            "{Bold}{}{}{} - Space to select, Return to submit{}\r\n",
+            self.text,
             style::Reset,
             Fg(Black),
             Fg(color::Reset)
@@ -134,7 +141,6 @@ impl Prompt for MultipleChoiceList {
             let input = stdin.next().unwrap().unwrap();
 
             match input {
-                Key::Char('\n') => break,
                 Key::Down | Key::Left => {
                     let (mut index, old) = self.selected();
                     old.selected = false;
@@ -165,6 +171,20 @@ impl Prompt for MultipleChoiceList {
                     let (_, option) = self.selected();
                     option.checked = !option.checked;
                 }
+                Key::Char('\n') => break,
+                Key::Esc => {
+                    write!(
+                        stdout,
+                        "\r{}",
+                        Up(self.options.len().clamp(0, 5).try_into().unwrap())
+                    )
+                    .unwrap();
+
+                    stdout.suspend_raw_mode().unwrap();
+
+                    // drop(stdout);
+                    process::exit(1);
+                }
                 _ => {}
             }
 
@@ -175,6 +195,8 @@ impl Prompt for MultipleChoiceList {
             )
             .unwrap();
         }
+
+        stdout.suspend_raw_mode().unwrap();
 
         self.options
             .iter()
