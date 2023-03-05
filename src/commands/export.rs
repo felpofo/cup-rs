@@ -1,4 +1,9 @@
-use crate::{dirs::Directories, repo::config::File, Repository};
+use crate::{
+    dirs::Directories,
+    prompt::{MultipleChoiceList, Prompt},
+    repo::config::File,
+    Repository,
+};
 use clap::ArgMatches;
 use std::{env::current_dir, error::Error, fs, io, path::PathBuf};
 
@@ -37,15 +42,41 @@ impl Export {
         submatches: &ArgMatches,
     ) -> Result<(), Box<dyn Error>> {
         let mut repository = Repository::open(name);
-        let files: Vec<_> = submatches
-            .get_many::<String>("FILES")
-            .unwrap()
-            .map(PathBuf::from)
-            .filter_map(resolve_path)
-            .flat_map(read_files_all)
-            .flatten()
-            .map(File::from)
-            .collect();
+
+        let interactive = *submatches.get_one::<bool>("interactive").unwrap();
+
+        let files: Vec<_> = match interactive {
+            true => {
+                let options = repository
+                    .config
+                    .files
+                    .iter()
+                    .map(|file| match file.1.as_str() {
+                        "~" => format!("{}{}", "~/", file.0),
+                        "/" => format!("{}{}", "/", file.0),
+                        _ => unreachable!(),
+                    })
+                    .map(|file| (file, false))
+                    .collect();
+
+                MultipleChoiceList::new("Select what files do you want to remove", options)
+                    .prompt()
+                    .into_iter()
+                    .map(PathBuf::from)
+                    .filter_map(resolve_path)
+                    .map(File::from)
+                    .collect()
+            }
+            false => submatches
+                .get_many::<String>("FILES")
+                .unwrap()
+                .map(PathBuf::from)
+                .filter_map(resolve_path)
+                .flat_map(read_files_all)
+                .flatten()
+                .map(File::from)
+                .collect(),
+        };
 
         repository.remove_files(&files)
     }
@@ -55,7 +86,7 @@ fn resolve_path(path: PathBuf) -> Option<PathBuf> {
     let pathstr = path.display().to_string();
 
     if path.is_absolute() {
-        return Some(path);
+        return path.canonicalize().ok();
     }
 
     let current = current_dir().unwrap();

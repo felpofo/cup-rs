@@ -34,8 +34,8 @@ pub fn parse_args() -> Command {
                 .about("Add file(s)"),
             command!("remove")
                 .arg_required_else_help(true)
-                .arg(arg!(<FILES> ... "Files you want to remove"))
-                .arg(arg!(-i --interactive "TODO Multiple choice list"))
+                .arg(arg!([FILES] ... "Files you want to remove"))
+                .arg(arg!(-i - -interactive).action(ArgAction::SetTrue))
                 .about("Remove file(s)"),
         ]);
 
