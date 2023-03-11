@@ -7,7 +7,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     match cmd.get_matches().subcommand() {
         Some(("export", matches)) => {
-            let name = matches.get_one::<String>("NAME").unwrap();
+            let name = matches.get_one::<String>("NAME").expect("Clap shows help if not exists");
 
             match matches.subcommand() {
                 Some(("add", submatches)) => Export::add(name, matches, submatches),
@@ -26,17 +26,18 @@ pub fn parse_args() -> Command {
 
     let export = command!("export")
         .about("Save your dotfiles")
+        .arg_required_else_help(true)
         .arg(arg!(<NAME> "Export name"))
         .subcommands([
             command!("add")
+                .about("Add file(s)")
                 .arg_required_else_help(true)
-                .arg(arg!(<FILES> ... "Files you want to add"))
-                .about("Add file(s)"),
+                .arg(arg!(<FILES> ... "Files you want to add")),
             command!("remove")
+                .about("Remove file(s)")
                 .arg_required_else_help(true)
                 .arg(arg!([FILES] ... "Files you want to remove"))
-                .arg(arg!(-i - -interactive).action(ArgAction::SetTrue))
-                .about("Remove file(s)"),
+                .arg(arg!(-i --interactive).action(ArgAction::SetTrue)),
         ]);
 
     app.subcommand(export)

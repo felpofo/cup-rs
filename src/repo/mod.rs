@@ -215,9 +215,13 @@ impl Repository {
         true
     }
 
-    /// Create an empty git repository on user data directory
+    /// Create an empty cup export on user data directory
     pub fn init(name: &str) -> Self {
         let path = Directories::Data.path().join(name);
+
+        if path.exists() {
+            panic!("Folder already exists");
+        }
 
         let repository = git2::Repository::init(&path);
         let config = crate::Config::new(name);
