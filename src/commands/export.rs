@@ -1,23 +1,56 @@
+use super::Command;
 use crate::{
     dirs::Directories,
     prompt::{MultipleChoiceList, Prompt},
     repo::config::File,
     Repository,
 };
-use clap::ArgMatches;
+use clap::{arg, command, ArgAction, ArgMatches};
 use std::{env::current_dir, error::Error, fs, io, path::PathBuf};
 
 #[derive(Debug)]
 pub struct Export;
 
+impl Into<clap::Command> for Export {
+    fn into(self) -> clap::Command {
+        command!("export")
+            .about("Save your dotfiles")
+            .arg_required_else_help(true)
+            .arg(arg!(<NAME> "Export name"))
+            .subcommands([
+                command!("add")
+                    .about("Add file(s)")
+                    .arg_required_else_help(true)
+                    .arg(arg!(<FILES> ... "Files you want to add")),
+                command!("remove")
+                    .about("Remove file(s)")
+                    .arg_required_else_help(true)
+                    .arg(arg!([FILES] ... "Files you want to remove"))
+                    .arg(arg!(-i - -interactive).action(ArgAction::SetTrue)),
+            ])
+    }
+}
+
+impl Command for Export {
+    fn run(matches: &ArgMatches) -> Result<(), Box<dyn Error>> {
+        let name = matches.get_one::<String>("NAME").unwrap();
+
+        match matches.subcommand() {
+            Some(("add", submatches)) => Self::add(name, matches, submatches),
+            Some(("remove", submatches)) => Self::remove(name, matches, submatches),
+            _ => Self::create(name),
+        }
+    }
+}
+
 impl Export {
-    pub fn create(name: &str) -> Result<(), Box<dyn Error>> {
+    fn create(name: &str) -> Result<(), Box<dyn Error>> {
         Repository::init(name);
 
         Ok(())
     }
 
-    pub fn add(
+    fn add(
         name: &str,
         _matches: &ArgMatches,
         submatches: &ArgMatches,
@@ -36,7 +69,7 @@ impl Export {
         repository.add_files(&mut files)
     }
 
-    pub fn remove(
+    fn remove(
         name: &str,
         _matches: &ArgMatches,
         submatches: &ArgMatches,
