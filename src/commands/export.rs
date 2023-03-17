@@ -1,12 +1,12 @@
 use super::Command;
 use crate::{
-    dirs::Directories,
+    directories::Directories,
     prompt::{MultipleChoiceList, Prompt},
-    repo::config::File,
-    Repository,
+    repository::config::File,
+    Error, Expand, Repository,
 };
 use clap::{arg, command, ArgAction, ArgMatches};
-use std::{env::current_dir, error::Error, fs, io, path::PathBuf};
+use std::path::PathBuf;
 
 #[derive(Debug)]
 pub struct Export;
@@ -32,122 +32,83 @@ impl Into<clap::Command> for Export {
 }
 
 impl Command for Export {
-    fn run(matches: &ArgMatches) -> Result<(), Box<dyn Error>> {
+    fn run(matches: &ArgMatches) -> Result<(), Error> {
         let name = matches.get_one::<String>("NAME").unwrap();
 
         match matches.subcommand() {
             Some(("add", submatches)) => Self::add(name, matches, submatches),
             Some(("remove", submatches)) => Self::remove(name, matches, submatches),
+            //TODO Some(("list", submatches)) => Self::list(name, matches, submatches),
             _ => Self::create(name),
         }
     }
 }
 
 impl Export {
-    fn create(name: &str) -> Result<(), Box<dyn Error>> {
-        Repository::init(name);
+    fn create(name: &str) -> Result<(), Error> {
+        let dest = Directories::Data;
+
+        Repository::init(name, &dest)?;
 
         Ok(())
     }
 
-    fn add(
-        name: &str,
-        _matches: &ArgMatches,
-        submatches: &ArgMatches,
-    ) -> Result<(), Box<dyn Error>> {
-        let mut repository = Repository::open(name);
+    fn add(name: &str, _matches: &ArgMatches, submatches: &ArgMatches) -> Result<(), Error> {
+        let path = Directories::Data.join(name);
+        let mut repository = Repository::open(&path)?;
+
         let mut files: Vec<_> = submatches
             .get_many::<String>("FILES")
             .unwrap()
             .map(PathBuf::from)
-            .filter_map(resolve_path)
-            .flat_map(read_files_all)
+            .filter_map(|p| p.expand().ok())
             .flatten()
             .map(File::from)
             .collect();
 
-        repository.add_files(&mut files)
+        repository.config.append(&mut files);
+        repository.config.save()?;
+
+        Ok(())
     }
 
-    fn remove(
-        name: &str,
-        _matches: &ArgMatches,
-        submatches: &ArgMatches,
-    ) -> Result<(), Box<dyn Error>> {
-        let mut repository = Repository::open(name);
+    fn remove(name: &str, _matches: &ArgMatches, submatches: &ArgMatches) -> Result<(), Error> {
+        let path = Directories::Data.join(name);
+        let mut repository = Repository::open(&path)?;
 
         let interactive = *submatches.get_one::<bool>("interactive").unwrap();
 
-        let files: Vec<_> = match interactive {
+        let mut files: Vec<File> = match interactive {
             true => {
                 let options = repository
                     .config
                     .files
                     .iter()
-                    .map(|file| match file.1.as_str() {
-                        "~" => format!("{}{}", "~/", file.0),
-                        "/" => format!("{}{}", "/", file.0),
-                        _ => unreachable!(),
+                    .map(|f| match f {
+                        File::User(file) => format!("~/{}", file),
+                        File::Root(file) => format!("/{}", file),
                     })
-                    .map(|file| (file, false))
                     .collect();
 
                 MultipleChoiceList::new("Select what files do you want to remove", options)
                     .prompt()
-                    .into_iter()
-                    .map(PathBuf::from)
-                    .filter_map(resolve_path)
-                    .map(File::from)
+                    .iter()
+                    .filter_map(|s| File::try_from(s.clone()).ok())
                     .collect()
             }
             false => submatches
                 .get_many::<String>("FILES")
                 .unwrap()
                 .map(PathBuf::from)
-                .filter_map(resolve_path)
-                .flat_map(read_files_all)
+                .filter_map(|p| p.expand().ok())
                 .flatten()
                 .map(File::from)
                 .collect(),
         };
 
-        repository.remove_files(&files)
+        repository.config.remove(&mut files);
+        repository.config.save()?;
+
+        Ok(())
     }
-}
-
-fn resolve_path(path: PathBuf) -> Option<PathBuf> {
-    let pathstr = path.display().to_string();
-
-    if path.is_absolute() {
-        return path.canonicalize().ok();
-    }
-
-    let current = current_dir().unwrap();
-
-    let path = match &pathstr[..2] {
-        "~/" => Directories::Home.path().join(&pathstr[2..]),
-        "./" => current.join(&pathstr[2..]),
-        _ => current.join(&pathstr),
-    };
-
-    if path.exists() {
-        path.canonicalize().ok()
-    } else {
-        None
-    }
-}
-
-fn read_files_all(dir: PathBuf) -> io::Result<Vec<PathBuf>> {
-    let mut files = vec![];
-
-    if dir.is_file() {
-        files.push(dir);
-    } else if dir.is_dir() {
-        for entry in fs::read_dir(dir)? {
-            let mut inner = read_files_all(entry?.path())?;
-            files.append(&mut inner);
-        }
-    }
-
-    Ok(files)
 }

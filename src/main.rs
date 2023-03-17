@@ -1,8 +1,10 @@
 use clap::command;
-use cup::commands::{Command, Export, Import};
-use std::error::Error;
+use cup::{
+    commands::{Command, Export, Import},
+    Error,
+};
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> Result<(), Error> {
     let cmd = parse_args();
 
     match cmd.get_matches().subcommand() {

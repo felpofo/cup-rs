@@ -1,25 +1,26 @@
-pub mod commands;
+mod directories;
+mod error;
+mod expand;
 mod prompt;
 
-mod dirs;
-mod repo;
+pub mod commands;
+pub mod repository;
 
-use dirs::Directories;
-pub use repo::{Config, Repository};
+use directories::Directories;
+pub use error::Error;
+pub use expand::Expand;
+pub use repository::{Config, Repository};
 
-fn error_and_exit(error_message: &str) -> ! {
+pub fn warn(msg: &str) {
     use termion::{
-        color::{self, Fg, Red},
+        color::{self, Fg, Yellow},
         style::{self, Bold},
     };
 
     eprintln!(
-        "{Bold}{}{}{}{}",
-        Fg(Red),
-        error_message,
-        style::Reset,
-        Fg(color::Reset)
+        "{}{Bold}WARNING{}{}: {msg}",
+        Fg(Yellow),
+        Fg(color::Reset),
+        style::Reset
     );
-
-    std::process::exit(1);
 }

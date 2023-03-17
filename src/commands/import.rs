@@ -1,7 +1,6 @@
-use crate::Repository;
 use super::Command;
-use clap::{arg, command, ArgMatches};
-use std::error::Error;
+use crate::{directories::Directories, Error, Repository};
+use clap::{arg, command, ArgAction, ArgMatches};
 
 #[derive(Debug)]
 pub struct Import;
@@ -11,23 +10,38 @@ impl Into<clap::Command> for Import {
         command!("import")
             .about("Import dotfiles")
             .arg_required_else_help(true)
-            .arg(arg!(<NAME> "Repo name"))
+            .arg(arg!(<URL> "Repo url"))
+            .arg(arg!(-o --overwrite).action(ArgAction::SetTrue))
     }
 }
 
 impl Command for Import {
-    fn run(matches: &ArgMatches) -> Result<(), Box<dyn Error>> {
-        let name = matches.get_one::<String>("NAME").unwrap();
+    fn run(matches: &ArgMatches) -> Result<(), Error> {
+        let url = matches.get_one::<String>("URL").unwrap();
+
+        let overwrite = *matches.get_one::<bool>("overwrite").unwrap();
 
         match matches.subcommand() {
-            _ => Self::create(name),
+            _ if overwrite => Self::import_overwrite(url),
+            _ => Self::import(url),
         }
     }
 }
 
 impl Import {
-    fn create(url: &str) -> Result<(), Box<dyn Error>> {
-        Repository::clone(url);
+    fn import(url: &str) -> Result<(), Error> {
+        let dest = Directories::Data.path();
+
+        Repository::clone(url, &dest, false)?;
+
+        Ok(())
+    }
+
+    #[allow(unused_must_use)]
+    fn import_overwrite(url: &str) -> Result<(), Error> {
+        let dest = Directories::Data.path();
+
+        Repository::clone(url, &dest, true)?;
 
         Ok(())
     }

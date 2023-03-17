@@ -59,7 +59,7 @@ pub struct MultipleChoiceList {
 }
 
 impl MultipleChoiceList {
-    pub fn new(text: &str, options: Vec<(String, bool)>) -> Self {
+    pub fn new(text: &str, options: Vec<String>) -> Self {
         let mut object = Self {
             text: text.into(),
             options: vec![],
@@ -67,7 +67,7 @@ impl MultipleChoiceList {
 
         options
             .iter()
-            .for_each(|(text, checked)| object.add(text.into(), *checked));
+            .for_each(|text| object.add(text.clone(), false));
 
         object
     }
