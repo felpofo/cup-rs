@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::{
     env::current_dir,
     fs,
-    io::{self, Write},
+    io,
     path::{Path, PathBuf},
 };
 use uuid::Uuid;
@@ -66,7 +66,7 @@ impl Config {
             println!("Copying: {file:?}");
 
             let dest = files.join(file.to_string());
-            fs::create_dir_all(&dest.parent().unwrap());
+            fs::create_dir_all(dest.parent().unwrap());
             fs::copy(file.real_path(), &dest);
         }
 
@@ -75,7 +75,7 @@ impl Config {
 
             let path = files.join(file.to_string());
 
-            fs::remove_file(&path);
+            fs::remove_file(path);
         }
 
         remove_empty_dir_all(&files);
@@ -94,14 +94,10 @@ impl Config {
     pub fn missing_files(&self) -> Vec<&File> {
         self.files
             .iter()
-            .filter_map(|file| {
+            .filter(|file| {
                 let path = Directories::Files(self).join(file.to_string());
 
-                if !path.exists() {
-                    Some(file)
-                } else {
-                    None
-                }
+                !path.exists()
             })
             .collect()
     }
@@ -116,7 +112,7 @@ impl Config {
                 let found: Vec<_> = found.into_iter().map(File::from).collect();
 
                 for file in found {
-                    if self.files.iter().find(|&f| *f == file).is_none() {
+                    if !self.files.iter().any(|f| *f == file) {
                         lost.push(file);
                     }
                 }
@@ -129,7 +125,7 @@ impl Config {
 
     pub fn append(&mut self, other: &mut Vec<File>) {
         for file in other {
-            let repeated = self.files.iter().find(|&f| f == file).is_some();
+            let repeated = self.files.iter().any(|f| f == file);
 
             if repeated {
                 continue;
@@ -243,11 +239,9 @@ fn remove_empty_dir_all_impl(dir: &Path, top: &Path) -> Result<(), io::Error> {
         }
     }
 
-    if dir != top {
-        if entries.is_empty() {
-            fs::remove_dir(dir)?;
-            remove_empty_dir_all_impl(dir.parent().unwrap(), top)?;
-        }
+    if dir != top && entries.is_empty() {
+        fs::remove_dir(dir)?;
+        remove_empty_dir_all_impl(dir.parent().unwrap(), top)?;
     }
 
     Ok(())

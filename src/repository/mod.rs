@@ -66,7 +66,7 @@ impl Repository {
         };
 
         if captures.name("ssh").is_some() || captures.name("website").is_some() {
-            git2::Repository::clone(url, &dest).and_then(|r| Ok(make_repository(r)))?
+            git2::Repository::clone(url, &dest).map(make_repository)?
         } else {
             let url = format!("git@github.com:{user}/{repo}");
             let key = get_ssh_key()?;
@@ -83,8 +83,7 @@ impl Repository {
             builder.fetch_options(fetch_options);
 
             builder
-                .clone(&url, &dest)
-                .and_then(|r| Ok(make_repository(r)))?
+                .clone(&url, &dest).map(make_repository)?
         }
     }
 
@@ -119,7 +118,7 @@ impl Repository {
     }
 
     pub fn delete(self) -> io::Result<()> {
-        fs::remove_dir_all(&self.path)
+        fs::remove_dir_all(self.path)
     }
 }
 

@@ -24,12 +24,10 @@ impl Directories<'_> {
         match &self {
             Self::Home => home,
             Self::Root => PathBuf::from("/"),
-            Self::Data => env::var_os("XDG_DATA_HOME")
-                .and_then(|s| Some(PathBuf::from(s)))
-                .unwrap_or(home.join(".local/share").join(crate_name!())),
-            Self::Cache => env::var_os("XDG_CACHE_HOME")
-                .and_then(|s| Some(PathBuf::from(s)))
-                .unwrap_or(home.join(".cache").join(crate_name!())),
+            Self::Data => env::var_os("XDG_DATA_HOME").map(PathBuf::from)
+                .unwrap_or_else(|| home.join(".local/share").join(crate_name!())),
+            Self::Cache => env::var_os("XDG_CACHE_HOME").map(PathBuf::from)
+                .unwrap_or_else(|| home.join(".cache").join(crate_name!())),
             Self::Files(config) => config.path.parent().unwrap().join("files"),
         }
     }
@@ -45,8 +43,8 @@ impl fmt::Display for Directories<'_> {
     }
 }
 
-impl Into<PathBuf> for Directories<'_> {
-    fn into(self) -> PathBuf {
-        self.path()
+impl From<Directories<'_>> for PathBuf {
+    fn from(val: Directories<'_>) -> Self {
+        val.path()
     }
 }

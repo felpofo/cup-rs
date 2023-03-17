@@ -5,6 +5,7 @@ use clap::{arg, command, ArgAction, ArgMatches};
 #[derive(Debug)]
 pub struct Import;
 
+#[allow(clippy::from_over_into)]
 impl Into<clap::Command> for Import {
     fn into(self) -> clap::Command {
         command!("import")
@@ -32,7 +33,7 @@ impl Import {
     fn import(url: &str) -> Result<(), Error> {
         let dest = Directories::Data.path();
 
-        Repository::clone(url, &dest, false)?;
+        Repository::clone(url, dest, false)?;
 
         Ok(())
     }
@@ -41,7 +42,7 @@ impl Import {
     fn import_overwrite(url: &str) -> Result<(), Error> {
         let dest = Directories::Data.path();
 
-        Repository::clone(url, &dest, true)?;
+        Repository::clone(url, dest, true)?;
 
         Ok(())
     }

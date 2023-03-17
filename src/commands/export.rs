@@ -11,6 +11,7 @@ use std::path::PathBuf;
 #[derive(Debug)]
 pub struct Export;
 
+#[allow(clippy::from_over_into)]
 impl Into<clap::Command> for Export {
     fn into(self) -> clap::Command {
         command!("export")
