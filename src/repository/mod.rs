@@ -24,7 +24,7 @@ impl Repository {
     /// * `git@<ssh>:<username>/<repository>`  
     ///
     /// * `<protocol>://<website>/<username>/<repository>`  
-    pub fn clone<P: AsRef<Path>>(url: &str, dest: P, overwrite: bool) -> Result<Self, Error> {
+    pub fn clone<P: AsRef<Path>>(url: &str, dest: P) -> Result<Self, Error> {
         // Adapted from `https://regexpattern.com/git-repository`
         // Fields: ([protocol   secure?   website]   OR   [git])   username   repository
         let regex = Regex::new(&format!(
@@ -48,11 +48,7 @@ impl Repository {
         let dest = dest.as_ref().join(repo);
 
         if dest.exists() {
-            if overwrite {
-                fs::remove_dir_all(&dest)?;
-            } else {
-                return Err(Error::AlreadyExists(dest));
-            }
+            fs::remove_dir_all(&dest)?;
         }
 
         let make_repository = |repository| -> Result<Self, Error> {

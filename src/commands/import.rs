@@ -1,6 +1,7 @@
 use super::Command;
 use crate::{directories::Directories, Error, Repository};
 use clap::{arg, command, ArgAction, ArgMatches};
+use std::fs;
 
 #[derive(Debug)]
 pub struct Import;
@@ -23,26 +24,32 @@ impl Command for Import {
         let overwrite = *matches.get_one::<bool>("overwrite").unwrap();
 
         match matches.subcommand() {
-            _ if overwrite => Self::import_overwrite(url),
-            _ => Self::import(url),
+            _ if overwrite => Self::import(url, true),
+            _ => Self::import(url, false),
         }
     }
 }
 
 impl Import {
-    fn import(url: &str) -> Result<(), Error> {
+    fn import(url: &str, overwrite: bool) -> Result<(), Error> {
         let dest = Directories::Data.path();
 
-        Repository::clone(url, dest, false)?;
+        let repository = Repository::clone(url, dest)?;
 
-        Ok(())
-    }
+        for file in &repository.config.files {
+            let from = Directories::Files(&repository.config).join(file.to_string());
+            let to = file.path();
 
-    #[allow(unused_must_use)]
-    fn import_overwrite(url: &str) -> Result<(), Error> {
-        let dest = Directories::Data.path();
+            if !overwrite && to.exists() {
+                let name = &to.file_name().unwrap().to_str().unwrap();
+                let old = format!("{}.old", name);
+                let old = &to.parent().unwrap().join(old);
 
-        Repository::clone(url, dest, true)?;
+                fs::copy(&to, &old)?;
+            }
+
+            fs::copy(&from, &to)?;
+        }
 
         Ok(())
     }

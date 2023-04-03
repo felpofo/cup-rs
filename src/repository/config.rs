@@ -67,7 +67,7 @@ impl Config {
 
             let dest = files.join(file.to_string());
             fs::create_dir_all(dest.parent().unwrap());
-            fs::copy(file.real_path(), &dest);
+            fs::copy(file.path(), &dest);
         }
 
         for file in self.lost_files() {
@@ -91,7 +91,7 @@ impl Config {
         Ok(())
     }
 
-    pub fn missing_files(&self) -> Vec<&File> {
+    fn missing_files(&self) -> Vec<&File> {
         self.files
             .iter()
             .filter(|file| {
@@ -102,7 +102,7 @@ impl Config {
             .collect()
     }
 
-    pub fn lost_files(&self) -> Vec<File> {
+    fn lost_files(&self) -> Vec<File> {
         let mut lost = vec![];
 
         let path = Directories::Files(self).path();
@@ -147,7 +147,7 @@ impl Config {
 }
 
 impl File {
-    fn real_path(&self) -> PathBuf {
+    pub fn path(&self) -> PathBuf {
         match &self {
             Self::Root(ref file) => Directories::Root.join(file),
             Self::User(ref file) => Directories::Home.join(file),
