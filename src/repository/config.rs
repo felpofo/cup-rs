@@ -1,15 +1,14 @@
 use crate::{Dirs, Expand};
+use anyhow::Result;
 use clap::crate_name;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::{
     env::current_dir,
-    fs,
-    io,
+    fs, io,
     path::{Path, PathBuf},
 };
 use uuid::Uuid;
-use anyhow::Result;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct Config {

@@ -1,8 +1,8 @@
 pub mod config;
 pub use config::Config;
 
-use anyhow::{Result, Error};
 use crate::Dirs;
+use anyhow::{Error, Result};
 use git2::{self, build::RepoBuilder, Cred, FetchOptions, RemoteCallbacks};
 use regex::Regex;
 use std::{
@@ -78,8 +78,7 @@ impl Repository {
             fetch_options.remote_callbacks(callbacks);
             builder.fetch_options(fetch_options);
 
-            builder
-                .clone(&url, &dest).map(make_repository)?
+            builder.clone(&url, &dest).map(make_repository)?
         }
     }
 

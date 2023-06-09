@@ -1,8 +1,8 @@
 use super::Command;
 use crate::{dirs::Dirs, Repository};
+use anyhow::Result;
 use clap::{arg, command, ArgAction, ArgMatches};
 use std::fs;
-use anyhow::Result;
 
 #[derive(Debug)]
 pub struct Import;
@@ -52,6 +52,6 @@ impl Into<clap::Command> for Import {
             .about("Import dotfiles")
             .arg_required_else_help(true)
             .arg(arg!(<URL> "Repo url"))
-            .arg(arg!(-o --overwrite).action(ArgAction::SetTrue))
+            .arg(arg!(-o - -overwrite).action(ArgAction::SetTrue))
     }
 }

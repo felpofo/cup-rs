@@ -1,10 +1,10 @@
 use crate::Config;
 use clap::crate_name;
+use directories::*;
 use std::{
     env, fmt,
     path::{Path, PathBuf},
 };
-use directories::*;
 
 #[derive(Debug, Copy, Clone)]
 pub enum Dirs<'a> {

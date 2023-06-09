@@ -2,8 +2,8 @@ use super::Command;
 use crate::{dirs::Dirs, repository::config::File, Expand, Repository};
 use anyhow::Result;
 use clap::{arg, command, ArgMatches};
-use dialoguer::MultiSelect;
-use std::{path::PathBuf};
+use dialoguer::{Confirm, MultiSelect};
+use std::{fs, path::PathBuf};
 
 #[derive(Debug)]
 pub struct Export;
@@ -15,7 +15,7 @@ impl Command for Export {
         match matches.subcommand() {
             Some(("add", submatches)) => Self::add(name, matches, submatches),
             Some(("remove", submatches)) => Self::remove(name, matches, submatches),
-            // TODO Some(("delete", submatches)) => Self::delete(name, matches, submatches),
+            Some(("delete", submatches)) => Self::delete(name, matches, submatches),
             Some(("create", _)) => Self::create(name),
             _ => Ok(()),
         }
@@ -93,6 +93,26 @@ impl Export {
 
         Ok(())
     }
+
+    fn delete(name: &str, _matches: &ArgMatches, submatches: &ArgMatches) -> Result<()> {
+        let path = Dirs::Data.join(name);
+
+        let has_user_confirmation = *submatches.get_one::<bool>("yes").unwrap();
+
+        if !has_user_confirmation {
+            if !Confirm::new()
+                .with_prompt(format!("Do you really want to delete '{name}'?"))
+                .interact()?
+            {
+                return Err(anyhow::Error::msg("Operation aborted"));
+            }
+        }
+
+        fs::remove_dir_all(&path)?;
+        println!("Deleted '{}'", path.display());
+
+        Ok(())
+    }
 }
 
 #[allow(clippy::from_over_into)]
@@ -108,9 +128,14 @@ impl Into<clap::Command> for Export {
                 command!("remove")
                     .about("Remove file(s)")
                     .arg_required_else_help(true)
-                    .arg(arg!([FILES] ... "Files you want to remove"))
-                    .arg(arg!(-i --interactive)),
+                    .args([
+                        arg!([FILES] ... "Files you want to remove"),
+                        arg!(-i --interactive "Choose the files you want to remove on the fly"),
+                    ]),
                 command!("create").about("Create a new export"),
+                command!("delete")
+                    .about("Deletes a export")
+                    .arg(arg!(-y --yes "Don't ask confirmation")),
             ])
     }
 }
