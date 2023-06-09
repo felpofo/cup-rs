@@ -1,9 +1,9 @@
-mod directories;
+mod dirs;
 mod path;
 pub mod commands;
 pub mod repository;
 
-use directories::Directories;
+use dirs::Dirs;
 pub use path::expand::Expand;
 pub use repository::{Config, Repository};
 

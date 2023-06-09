@@ -2,7 +2,7 @@ pub mod config;
 pub use config::Config;
 
 use anyhow::{Result, Error};
-use crate::Directories;
+use crate::Dirs;
 use git2::{self, build::RepoBuilder, Cred, FetchOptions, RemoteCallbacks};
 use regex::Regex;
 use std::{
@@ -83,7 +83,7 @@ impl Repository {
         }
     }
 
-    pub fn init(name: &str, dest: &Directories) -> Result<Self> {
+    pub fn init(name: &str, dest: &Dirs) -> Result<Self> {
         let path = dest.join(name);
 
         if path.exists() {
@@ -128,7 +128,7 @@ impl std::fmt::Debug for Repository {
 }
 
 fn get_ssh_key() -> Result<String> {
-    let ssh_dir = Directories::Home.join(".ssh");
+    let ssh_dir = Dirs::Home.join(".ssh");
 
     let mut public_keys: Vec<_> = fs::read_dir(&ssh_dir)?
         .filter_map(|entry| Some(entry.ok()?.file_name().into_string().unwrap()))

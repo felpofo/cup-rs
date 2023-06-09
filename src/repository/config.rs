@@ -1,4 +1,4 @@
-use crate::{Directories, Expand};
+use crate::{Dirs, Expand};
 use clap::crate_name;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -28,7 +28,7 @@ pub enum File {
 }
 
 impl Config {
-    pub fn new(name: &str, dest: &Directories) -> Result<Self> {
+    pub fn new(name: &str, dest: &Dirs) -> Result<Self> {
         let path = dest.join(name).join(format!("{}.yml", crate_name!()));
 
         let config = Self {
@@ -61,7 +61,7 @@ impl Config {
 
     #[allow(unused_must_use)]
     pub fn save(&mut self) -> Result<()> {
-        let files = Directories::Files(self).path();
+        let files = Dirs::Files(self).path();
 
         for file in self.missing_files() {
             println!("Copying: {file:?}");
@@ -96,7 +96,7 @@ impl Config {
         self.files
             .iter()
             .filter(|file| {
-                let path = Directories::Files(self).join(file.to_string());
+                let path = Dirs::Files(self).join(file.to_string());
 
                 !path.exists()
             })
@@ -106,7 +106,7 @@ impl Config {
     fn lost_files(&self) -> Vec<File> {
         let mut lost = vec![];
 
-        let path = Directories::Files(self).path();
+        let path = Dirs::Files(self).path();
 
         match path.expand().ok() {
             Some(found) => {
@@ -150,8 +150,8 @@ impl Config {
 impl File {
     pub fn path(&self) -> PathBuf {
         match &self {
-            Self::Root(ref file) => Directories::Root.join(file),
-            Self::User(ref file) => Directories::Home.join(file),
+            Self::Root(ref file) => Dirs::Root.join(file),
+            Self::User(ref file) => Dirs::Home.join(file),
         }
     }
 
@@ -166,7 +166,7 @@ impl File {
 impl From<PathBuf> for File {
     fn from(path: PathBuf) -> Self {
         let value = path.display().to_string();
-        let home = Directories::Home.to_string();
+        let home = Dirs::Home.to_string();
 
         let regex = Regex::new(r".+/files/(?P<type>user|root)/(?P<file>.+)").unwrap();
 
@@ -199,7 +199,7 @@ impl TryFrom<&str> for File {
             let current = current_dir()?;
 
             path = match &value[..2] {
-                "~/" => Directories::Home.join(&value[2..]),
+                "~/" => Dirs::Home.join(&value[2..]),
                 "./" => current.join(&value[2..]),
                 _ => current.join(value),
             };

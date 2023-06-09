@@ -1,5 +1,5 @@
 use super::Command;
-use crate::{directories::Directories, Repository};
+use crate::{dirs::Dirs, Repository};
 use clap::{arg, command, ArgAction, ArgMatches};
 use std::fs;
 use anyhow::Result;
@@ -22,12 +22,12 @@ impl Command for Import {
 
 impl Import {
     fn import(url: &str, overwrite: bool) -> Result<()> {
-        let dest = Directories::Data.path();
+        let dest = Dirs::Data.path();
 
         let repository = Repository::clone(url, dest)?;
 
         for file in &repository.config.files {
-            let from = Directories::Files(&repository.config).join(file.to_string());
+            let from = Dirs::Files(&repository.config).join(file.to_string());
             let to = file.path();
 
             if !overwrite && to.exists() {

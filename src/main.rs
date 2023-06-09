@@ -1,6 +1,6 @@
-use clap::command;
-use cup::commands::{Command, Export, Import};
 use anyhow::Result;
+use clap::command;
+use cup::commands::*;
 
 fn main() -> Result<()> {
     let cmd = parse_args();
@@ -8,6 +8,7 @@ fn main() -> Result<()> {
     match cmd.get_matches().subcommand() {
         Some(("import", matches)) => Import::run(matches),
         Some(("export", matches)) => Export::run(matches),
+        Some(("list", matches)) => List::run(matches),
         _ => Ok(()),
     }
 }
@@ -18,5 +19,5 @@ pub fn parse_args() -> clap::Command {
         .disable_help_subcommand(true)
         .subcommand_required(true);
 
-    app.subcommand(Import).subcommand(Export)
+    app.subcommand(Import).subcommand(Export).subcommand(List)
 }

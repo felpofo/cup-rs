@@ -1,13 +1,9 @@
 use super::Command;
-use crate::{
-    directories::Directories,
-    repository::config::File,
-    Expand, Repository,
-};
-use clap::{arg, command, ArgAction, ArgMatches};
-use dialoguer::MultiSelect;
-use std::path::PathBuf;
+use crate::{dirs::Dirs, repository::config::File, Expand, Repository};
 use anyhow::Result;
+use clap::{arg, command, ArgMatches};
+use dialoguer::MultiSelect;
+use std::{path::PathBuf};
 
 #[derive(Debug)]
 pub struct Export;
@@ -19,16 +15,16 @@ impl Command for Export {
         match matches.subcommand() {
             Some(("add", submatches)) => Self::add(name, matches, submatches),
             Some(("remove", submatches)) => Self::remove(name, matches, submatches),
-            //TODO Some(("list", submatches)) => Self::list(name, matches, submatches),
-            //TODO Some(("delete", submatches)) => Self::delete(name, matches, submatches),
-            _ => Self::create(name),
+            // TODO Some(("delete", submatches)) => Self::delete(name, matches, submatches),
+            Some(("create", _)) => Self::create(name),
+            _ => Ok(()),
         }
     }
 }
 
 impl Export {
     fn create(name: &str) -> Result<()> {
-        let dest = Directories::Data;
+        let dest = Dirs::Data;
 
         Repository::init(name, &dest)?;
 
@@ -36,7 +32,7 @@ impl Export {
     }
 
     fn add(name: &str, _matches: &ArgMatches, submatches: &ArgMatches) -> Result<()> {
-        let path = Directories::Data.join(name);
+        let path = Dirs::Data.join(name);
         let mut repository = Repository::open(&path)?;
 
         let mut files: Vec<_> = submatches
@@ -55,7 +51,7 @@ impl Export {
     }
 
     fn remove(name: &str, _matches: &ArgMatches, submatches: &ArgMatches) -> Result<()> {
-        let path = Directories::Data.join(name);
+        let path = Dirs::Data.join(name);
         let mut repository = Repository::open(&path)?;
 
         let interactive = *submatches.get_one::<bool>("interactive").unwrap();
@@ -68,6 +64,11 @@ impl Export {
                     .iter()
                     .map(File::to_user_str)
                     .collect();
+
+                if options.is_empty() {
+                    println!("There are no files to remove");
+                    return Ok(());
+                }
 
                 MultiSelect::new()
                     .items(&options)
@@ -99,18 +100,17 @@ impl Into<clap::Command> for Export {
     fn into(self) -> clap::Command {
         command!("export")
             .about("Save your dotfiles")
-            .arg_required_else_help(true)
             .arg(arg!(<NAME> "Export name"))
             .subcommands([
                 command!("add")
                     .about("Add file(s)")
-                    .arg_required_else_help(true)
                     .arg(arg!(<FILES> ... "Files you want to add")),
                 command!("remove")
                     .about("Remove file(s)")
                     .arg_required_else_help(true)
                     .arg(arg!([FILES] ... "Files you want to remove"))
-                    .arg(arg!(-i --interactive).action(ArgAction::SetTrue)),
+                    .arg(arg!(-i --interactive)),
+                command!("create").about("Create a new export"),
             ])
     }
 }
