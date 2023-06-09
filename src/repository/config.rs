@@ -154,7 +154,7 @@ impl File {
         }
     }
 
-    pub fn to_user_str(&self) -> String {
+    pub fn repr(&self) -> String {
         match self {
             File::User(file) => format!("~/{}", file),
             File::Root(file) => format!("/{}", file),
