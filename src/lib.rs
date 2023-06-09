@@ -1,6 +1,6 @@
 mod directories;
 mod error;
-mod expand;
+mod path;
 mod prompt;
 
 pub mod commands;
@@ -8,7 +8,7 @@ pub mod repository;
 
 use directories::Directories;
 pub use error::Error;
-pub use expand::Expand;
+pub use path::expand::Expand;
 pub use repository::{Config, Repository};
 
 pub fn warn(msg: &str) {

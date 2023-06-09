@@ -6,17 +6,6 @@ use std::fs;
 #[derive(Debug)]
 pub struct Import;
 
-#[allow(clippy::from_over_into)]
-impl Into<clap::Command> for Import {
-    fn into(self) -> clap::Command {
-        command!("import")
-            .about("Import dotfiles")
-            .arg_required_else_help(true)
-            .arg(arg!(<URL> "Repo url"))
-            .arg(arg!(-o --overwrite).action(ArgAction::SetTrue))
-    }
-}
-
 impl Command for Import {
     fn run(matches: &ArgMatches) -> Result<(), Error> {
         let url = matches.get_one::<String>("URL").unwrap();
@@ -52,5 +41,16 @@ impl Import {
         }
 
         Ok(())
+    }
+}
+
+#[allow(clippy::from_over_into)]
+impl Into<clap::Command> for Import {
+    fn into(self) -> clap::Command {
+        command!("import")
+            .about("Import dotfiles")
+            .arg_required_else_help(true)
+            .arg(arg!(<URL> "Repo url"))
+            .arg(arg!(-o --overwrite).action(ArgAction::SetTrue))
     }
 }

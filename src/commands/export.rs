@@ -11,27 +11,6 @@ use std::path::PathBuf;
 #[derive(Debug)]
 pub struct Export;
 
-#[allow(clippy::from_over_into)]
-impl Into<clap::Command> for Export {
-    fn into(self) -> clap::Command {
-        command!("export")
-            .about("Save your dotfiles")
-            .arg_required_else_help(true)
-            .arg(arg!(<NAME> "Export name"))
-            .subcommands([
-                command!("add")
-                    .about("Add file(s)")
-                    .arg_required_else_help(true)
-                    .arg(arg!(<FILES> ... "Files you want to add")),
-                command!("remove")
-                    .about("Remove file(s)")
-                    .arg_required_else_help(true)
-                    .arg(arg!([FILES] ... "Files you want to remove"))
-                    .arg(arg!(-i - -interactive).action(ArgAction::SetTrue)),
-            ])
-    }
-}
-
 impl Command for Export {
     fn run(matches: &ArgMatches) -> Result<(), Error> {
         let name = matches.get_one::<String>("NAME").unwrap();
@@ -111,5 +90,26 @@ impl Export {
         repository.config.save()?;
 
         Ok(())
+    }
+}
+
+#[allow(clippy::from_over_into)]
+impl Into<clap::Command> for Export {
+    fn into(self) -> clap::Command {
+        command!("export")
+            .about("Save your dotfiles")
+            .arg_required_else_help(true)
+            .arg(arg!(<NAME> "Export name"))
+            .subcommands([
+                command!("add")
+                    .about("Add file(s)")
+                    .arg_required_else_help(true)
+                    .arg(arg!(<FILES> ... "Files you want to add")),
+                command!("remove")
+                    .about("Remove file(s)")
+                    .arg_required_else_help(true)
+                    .arg(arg!([FILES] ... "Files you want to remove"))
+                    .arg(arg!(-i --interactive).action(ArgAction::SetTrue)),
+            ])
     }
 }

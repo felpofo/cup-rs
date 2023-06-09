@@ -17,6 +17,7 @@ fn main() -> Result<(), Error> {
 pub fn parse_args() -> clap::Command {
     let app = command!()
         .about("I bet you can't hold it")
+        .disable_help_subcommand(true)
         .subcommand_required(true);
 
     app.subcommand(Import).subcommand(Export)
