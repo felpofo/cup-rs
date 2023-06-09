@@ -1,31 +1,33 @@
 use super::Command;
 use crate::{
     directories::Directories,
-    prompt::{MultipleChoiceList, Prompt},
     repository::config::File,
-    Error, Expand, Repository,
+    Expand, Repository,
 };
 use clap::{arg, command, ArgAction, ArgMatches};
+use dialoguer::MultiSelect;
 use std::path::PathBuf;
+use anyhow::Result;
 
 #[derive(Debug)]
 pub struct Export;
 
 impl Command for Export {
-    fn run(matches: &ArgMatches) -> Result<(), Error> {
+    fn run(matches: &ArgMatches) -> Result<()> {
         let name = matches.get_one::<String>("NAME").unwrap();
 
         match matches.subcommand() {
             Some(("add", submatches)) => Self::add(name, matches, submatches),
             Some(("remove", submatches)) => Self::remove(name, matches, submatches),
             //TODO Some(("list", submatches)) => Self::list(name, matches, submatches),
+            //TODO Some(("delete", submatches)) => Self::delete(name, matches, submatches),
             _ => Self::create(name),
         }
     }
 }
 
 impl Export {
-    fn create(name: &str) -> Result<(), Error> {
+    fn create(name: &str) -> Result<()> {
         let dest = Directories::Data;
 
         Repository::init(name, &dest)?;
@@ -33,7 +35,7 @@ impl Export {
         Ok(())
     }
 
-    fn add(name: &str, _matches: &ArgMatches, submatches: &ArgMatches) -> Result<(), Error> {
+    fn add(name: &str, _matches: &ArgMatches, submatches: &ArgMatches) -> Result<()> {
         let path = Directories::Data.join(name);
         let mut repository = Repository::open(&path)?;
 
@@ -52,7 +54,7 @@ impl Export {
         Ok(())
     }
 
-    fn remove(name: &str, _matches: &ArgMatches, submatches: &ArgMatches) -> Result<(), Error> {
+    fn remove(name: &str, _matches: &ArgMatches, submatches: &ArgMatches) -> Result<()> {
         let path = Directories::Data.join(name);
         let mut repository = Repository::open(&path)?;
 
@@ -60,27 +62,26 @@ impl Export {
 
         let mut files: Vec<File> = match interactive {
             true => {
-                let options = repository
+                let options: Vec<String> = repository
                     .config
                     .files
                     .iter()
-                    .map(|f| match f {
-                        File::User(file) => format!("~/{}", file),
-                        File::Root(file) => format!("/{}", file),
-                    })
+                    .map(File::to_user_str)
                     .collect();
 
-                MultipleChoiceList::new("Select what files do you want to remove", options)
-                    .prompt()
+                MultiSelect::new()
+                    .items(&options)
+                    .interact()?
                     .iter()
-                    .filter_map(|s| File::try_from(s.clone()).ok())
+                    .map(|&i| &options[i])
+                    .filter_map(|s| File::try_from(s).ok())
                     .collect()
             }
             false => submatches
                 .get_many::<String>("FILES")
                 .unwrap()
                 .map(PathBuf::from)
-                .filter_map(|p| p.expand().ok())
+                .filter_map(|path| path.expand().ok())
                 .flatten()
                 .map(File::from)
                 .collect(),

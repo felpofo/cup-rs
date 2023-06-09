@@ -1,7 +1,8 @@
 pub mod config;
 pub use config::Config;
 
-use crate::{Directories, Error};
+use anyhow::{Result, Error};
+use crate::Directories;
 use git2::{self, build::RepoBuilder, Cred, FetchOptions, RemoteCallbacks};
 use regex::Regex;
 use std::{
@@ -19,13 +20,13 @@ pub struct Repository {
 impl Repository {
     /// ## Possible Inputs
     ///
-    /// * `<username>/<repository>`  
+    /// * `<username>/<repository>`
     ///
-    /// * `git@<ssh>:<username>/<repository>`  
+    /// * `git@<ssh>:<username>/<repository>`
     ///
-    /// * `<protocol>://<website>/<username>/<repository>`  
-    pub fn clone<P: AsRef<Path>>(url: &str, dest: P) -> Result<Self, Error> {
-        // Adapted from `https://regexpattern.com/git-repository`
+    /// * `<protocol>://<website>/<username>/<repository>`
+    pub fn clone<P: AsRef<Path>>(url: &str, dest: P) -> Result<Self> {
+        // https://regexpattern.com/git-repository
         // Fields: ([protocol   secure?   website]   OR   [git])   username   repository
         let regex = Regex::new(&format!(
             r"^(?:(?:{}|{})(?::(?://{}/)?))?{}/{}(?:\.git)?$",
@@ -37,9 +38,8 @@ impl Repository {
         ))?;
 
         if !regex.is_match(url) {
-            return Err(Error::InvalidRepository);
+            return Err(Error::msg("Invalid Repository"));
         }
-
         let captures = regex.captures(url).unwrap();
 
         let user = captures.name("username").unwrap().as_str();
@@ -51,7 +51,7 @@ impl Repository {
             fs::remove_dir_all(&dest)?;
         }
 
-        let make_repository = |repository| -> Result<Self, Error> {
+        let make_repository = |repository| -> Result<Self> {
             let config = Config::open(&dest)?;
 
             Ok(Self {
@@ -83,11 +83,11 @@ impl Repository {
         }
     }
 
-    pub fn init(name: &str, dest: &Directories) -> Result<Self, Error> {
+    pub fn init(name: &str, dest: &Directories) -> Result<Self> {
         let path = dest.join(name);
 
         if path.exists() {
-            return Err(Error::AlreadyExists(path));
+            return Err(Error::msg(format!("'{path:?}' already exists")));
         }
 
         let repository = git2::Repository::init(&path)?;
@@ -101,7 +101,7 @@ impl Repository {
         })
     }
 
-    pub fn open<P: AsRef<Path> + Copy>(path: P) -> Result<Self, Error> {
+    pub fn open<P: AsRef<Path> + Copy>(path: P) -> Result<Self> {
         let repository = git2::Repository::open(path)?;
 
         let config = Config::open(path)?;
@@ -127,7 +127,7 @@ impl std::fmt::Debug for Repository {
     }
 }
 
-fn get_ssh_key() -> Result<String, Error> {
+fn get_ssh_key() -> Result<String> {
     let ssh_dir = Directories::Home.join(".ssh");
 
     let mut public_keys: Vec<_> = fs::read_dir(&ssh_dir)?
@@ -138,7 +138,7 @@ fn get_ssh_key() -> Result<String, Error> {
     public_keys.sort();
 
     if public_keys.is_empty() {
-        Err(Error::SshKeyNotFound)
+        Err(Error::msg("Ssh key not found"))
     } else {
         Ok(ssh_dir
             .join(&public_keys[0])

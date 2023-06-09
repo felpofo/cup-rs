@@ -1,10 +1,8 @@
 use clap::command;
-use cup::{
-    commands::{Command, Export, Import},
-    Error,
-};
+use cup::commands::{Command, Export, Import};
+use anyhow::Result;
 
-fn main() -> Result<(), Error> {
+fn main() -> Result<()> {
     let cmd = parse_args();
 
     match cmd.get_matches().subcommand() {

@@ -1,13 +1,14 @@
 use super::Command;
-use crate::{directories::Directories, Error, Repository};
+use crate::{directories::Directories, Repository};
 use clap::{arg, command, ArgAction, ArgMatches};
 use std::fs;
+use anyhow::Result;
 
 #[derive(Debug)]
 pub struct Import;
 
 impl Command for Import {
-    fn run(matches: &ArgMatches) -> Result<(), Error> {
+    fn run(matches: &ArgMatches) -> Result<()> {
         let url = matches.get_one::<String>("URL").unwrap();
 
         let overwrite = *matches.get_one::<bool>("overwrite").unwrap();
@@ -20,7 +21,7 @@ impl Command for Import {
 }
 
 impl Import {
-    fn import(url: &str, overwrite: bool) -> Result<(), Error> {
+    fn import(url: &str, overwrite: bool) -> Result<()> {
         let dest = Directories::Data.path();
 
         let repository = Repository::clone(url, dest)?;
@@ -34,7 +35,7 @@ impl Import {
                 let old = format!("{}.old", name);
                 let old = &to.parent().unwrap().join(old);
 
-                fs::copy(&to, &old)?;
+                fs::copy(&to, old)?;
             }
 
             fs::copy(&from, &to)?;

@@ -1,4 +1,4 @@
-use crate::{Directories, Error, Expand};
+use crate::{Directories, Expand};
 use clap::crate_name;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -9,6 +9,7 @@ use std::{
     path::{Path, PathBuf},
 };
 use uuid::Uuid;
+use anyhow::Result;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct Config {
@@ -27,7 +28,7 @@ pub enum File {
 }
 
 impl Config {
-    pub fn new(name: &str, dest: &Directories) -> Result<Self, Error> {
+    pub fn new(name: &str, dest: &Directories) -> Result<Self> {
         let path = dest.join(name).join(format!("{}.yml", crate_name!()));
 
         let config = Self {
@@ -47,7 +48,7 @@ impl Config {
         Ok(config)
     }
 
-    pub fn open<P: AsRef<Path>>(path: P) -> Result<Self, Error> {
+    pub fn open<P: AsRef<Path>>(path: P) -> Result<Self> {
         let path = path.as_ref().join(format!("{}.yml", crate_name!()));
 
         let contents = fs::read_to_string(&path)?;
@@ -59,7 +60,7 @@ impl Config {
     }
 
     #[allow(unused_must_use)]
-    pub fn save(&mut self) -> Result<(), Error> {
+    pub fn save(&mut self) -> Result<()> {
         let files = Directories::Files(self).path();
 
         for file in self.missing_files() {
@@ -153,6 +154,13 @@ impl File {
             Self::User(ref file) => Directories::Home.join(file),
         }
     }
+
+    pub fn to_user_str(&self) -> String {
+        match self {
+            File::User(file) => format!("~/{}", file),
+            File::Root(file) => format!("/{}", file),
+        }
+    }
 }
 
 impl From<PathBuf> for File {
@@ -182,9 +190,9 @@ impl From<PathBuf> for File {
 }
 
 impl TryFrom<&str> for File {
-    type Error = Error;
+    type Error = anyhow::Error;
 
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
+    fn try_from(value: &str) -> Result<Self> {
         let mut path = PathBuf::from(value);
 
         if !path.is_absolute() {
@@ -200,15 +208,15 @@ impl TryFrom<&str> for File {
         if path.exists() {
             Ok(Self::from(path))
         } else {
-            Err(Error::Other("Path does not exist"))
+            Err(anyhow::Error::msg("Path does not exist"))
         }
     }
 }
 
-impl TryFrom<String> for File {
-    type Error = Error;
+impl TryFrom<&String> for File {
+    type Error = anyhow::Error;
 
-    fn try_from(value: String) -> Result<Self, Self::Error> {
+    fn try_from(value: &String) -> Result<Self> {
         Self::try_from(value.as_str())
     }
 }
