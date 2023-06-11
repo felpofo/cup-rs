@@ -2,4 +2,18 @@
 
 This program is a dotfile manager
 
-Maybe one day you can use it :)
+## Commands
+
+### `import`
+- let you to import a repo storing your dotfiles
+
+### `export`
+- let you to create that repo
+
+### `list`
+- list all exports that you have on your machine
+
+## Incomplete
+
+### `export`
+- it dont commit changes automatically yet
