@@ -1,7 +1,7 @@
 use super::Command;
 use crate::{dirs::Dirs, Repository};
 use anyhow::Result;
-use clap::{arg, command, ArgAction, ArgMatches};
+use clap::{arg, command, ArgMatches};
 use std::fs;
 
 #[derive(Debug)]
@@ -12,33 +12,38 @@ impl Command for Import {
         let url = matches.get_one::<String>("URL").unwrap();
 
         let overwrite = *matches.get_one::<bool>("overwrite").unwrap();
+        let quiet = *matches.get_one::<bool>("quiet").unwrap();
 
         match matches.subcommand() {
-            _ if overwrite => Self::import(url, true),
-            _ => Self::import(url, false),
+            _ => Self::import(url, overwrite, quiet),
         }
     }
 }
 
 impl Import {
-    fn import(url: &str, overwrite: bool) -> Result<()> {
+    fn import(url: &str, overwrite: bool, quiet: bool) -> Result<()> {
         let dest = Dirs::Data.path();
 
         let repository = Repository::clone(url, dest)?;
 
         for file in &repository.config.files {
+            let name = file.name();
             let from = Dirs::Files(&repository.config).join(file.to_string());
-            let to = file.path();
+            let to = file.stored_path();
 
             if !overwrite && to.exists() {
-                let name = &to.file_name().unwrap().to_str().unwrap();
-                let old = format!("{}.old", name);
-                let old = &to.parent().unwrap().join(old);
+                let old = &to.parent().unwrap().join(format!("{name}.bcup"));
 
-                fs::copy(&to, old)?;
+                match fs::copy(&to, old) {
+                    Ok(_) => if !quiet { println!("Backed up existent '{name}'") },
+                    Err(err) => return Err(err.into()),
+                };
             }
 
-            fs::copy(&from, &to)?;
+            match fs::copy(&from, &to) {
+                Ok(_) => if !quiet { println!("Imported '{name}'") },
+                Err(err) => return Err(err.into()),
+            };
         }
 
         Ok(())
@@ -51,7 +56,10 @@ impl Into<clap::Command> for Import {
         command!("import")
             .about("Import dotfiles")
             .arg_required_else_help(true)
-            .arg(arg!(<URL> "Repo url"))
-            .arg(arg!(-o - -overwrite).action(ArgAction::SetTrue))
+            .args([
+                arg!(<URL> "Repo url"),
+                arg!(-o --overwrite "Ignores if some file already exists"),
+                arg!(-q --quiet "Do not output any information"),
+            ])
     }
 }

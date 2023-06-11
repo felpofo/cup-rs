@@ -58,7 +58,7 @@ impl Export {
 
         let mut files: Vec<File> = match interactive {
             true => {
-                let options: Vec<String> = repository.config.files.iter().map(File::repr).collect();
+                let options: Vec<String> = repository.config.files.iter().map(File::user_path).collect();
 
                 if options.is_empty() {
                     println!("There are no files to remove");

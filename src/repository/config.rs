@@ -67,7 +67,7 @@ impl Config {
 
             let dest = files.join(file.to_string());
             fs::create_dir_all(dest.parent().unwrap());
-            fs::copy(file.path(), &dest);
+            fs::copy(file.stored_path(), &dest);
         }
 
         for file in self.lost_files() {
@@ -147,17 +147,24 @@ impl Config {
 }
 
 impl File {
-    pub fn path(&self) -> PathBuf {
+    pub fn stored_path(&self) -> PathBuf {
         match &self {
             Self::Root(ref file) => Dirs::Root.join(file),
             Self::User(ref file) => Dirs::Home.join(file),
         }
     }
 
-    pub fn repr(&self) -> String {
+    pub fn user_path(&self) -> String {
         match self {
             File::User(file) => format!("~/{}", file),
             File::Root(file) => format!("/{}", file),
+        }
+    }
+
+    pub fn name(&self) -> &String {
+        match self {
+            File::User(file) => file,
+            File::Root(file) => file,
         }
     }
 }
