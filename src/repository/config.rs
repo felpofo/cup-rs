@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::{
     env::current_dir,
     fs, io,
-    path::{Path, PathBuf},
+    path::{Path, PathBuf}
 };
 use uuid::Uuid;
 
@@ -58,7 +58,6 @@ impl Config {
         Ok(config)
     }
 
-    #[allow(unused_must_use)]
     pub fn save(&mut self) -> Result<()> {
         let files = Dirs::Files(self).path();
 
@@ -66,8 +65,8 @@ impl Config {
             println!("Copying: {file:?}");
 
             let dest = files.join(file.to_string());
-            fs::create_dir_all(dest.parent().unwrap());
-            fs::copy(file.stored_path(), &dest);
+            fs::create_dir_all(dest.parent().unwrap())?;
+            fs::copy(file.stored_path(), &dest)?;
         }
 
         for file in self.lost_files() {
@@ -75,10 +74,10 @@ impl Config {
 
             let path = files.join(file.to_string());
 
-            fs::remove_file(path);
+            fs::remove_file(path)?;
         }
 
-        remove_empty_dir_all(&files);
+        remove_empty_dir_all(&files)?;
 
         let f = fs::File::options()
             .write(true)
@@ -87,6 +86,8 @@ impl Config {
             .open(&self.path)?;
 
         serde_yaml::to_writer(f, &self)?;
+
+        self.commit_changes()?;
 
         Ok(())
     }
@@ -143,6 +144,25 @@ impl Config {
                 self.files.swap_remove(index);
             }
         }
+    }
+
+    pub fn commit_changes(&self) -> Result<()> {
+        let repo_path = self.path.parent().unwrap();
+
+        let message = format!("{}", chrono::offset::Utc::now().format("%Y-%m-%d %H:%M:%S"));
+
+        // don't like this but works, who cares after all?
+        std::process::Command::new("git")
+            .args(["add", "-A"])
+            .current_dir(repo_path)
+            .output()?;
+
+        std::process::Command::new("git")
+            .args(["commit", "-m", &message])
+            .current_dir(repo_path)
+            .output()?;
+
+        Ok(())
     }
 }
 

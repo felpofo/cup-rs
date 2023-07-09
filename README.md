@@ -15,5 +15,4 @@ This program is a dotfile manager
 
 ## Incomplete
 
-### `export`
-- it dont commit changes automatically yet
+- revert changes

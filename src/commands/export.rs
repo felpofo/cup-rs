@@ -58,7 +58,12 @@ impl Export {
 
         let mut files: Vec<File> = match interactive {
             true => {
-                let options: Vec<String> = repository.config.files.iter().map(File::user_path).collect();
+                let options: Vec<String> = repository
+                    .config
+                    .files
+                    .iter()
+                    .map(File::user_path)
+                    .collect();
 
                 if options.is_empty() {
                     println!("There are no files to remove");
@@ -94,13 +99,12 @@ impl Export {
 
         let has_user_confirmation = *submatches.get_one::<bool>("yes").unwrap();
 
-        if !has_user_confirmation {
-            if !Confirm::new()
+        if !has_user_confirmation
+            || !Confirm::new()
                 .with_prompt(format!("Do you really want to delete '{name}'?"))
                 .interact()?
-            {
-                return Err(anyhow::Error::msg("Operation aborted"));
-            }
+        {
+            return Err(anyhow::Error::msg("Operation aborted"));
         }
 
         fs::remove_dir_all(&path)?;
