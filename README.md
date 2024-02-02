@@ -1,18 +1,5 @@
 # Cup
 
-This program is a dotfile manager
-
-## Commands
-
-### `import`
-- let you to import a repo storing your dotfiles
-
-### `export`
-- let you to create that repo
-
-### `list`
-- list all exports that you have on your machine
-
-## Incomplete
-
-- revert changes
+> [!IMPORTANT]
+> I made the biggest mistake of the century, which was to create a new crate before ~~start~~ end the project, which i've started but never finished (like everything i do)  
+> so the thing is that some day i'll just use this repo to publish something ~~something that rust is really good at~~  
